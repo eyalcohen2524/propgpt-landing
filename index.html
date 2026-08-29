@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PropGPT - AI Player Props Analysis for NFL, NBA & MLB</title>
+<meta name="description" content="PropGPT grades every player prop with AI. Real-time stats, predictions and grades for NFL, NBA and MLB props, over/unders, moneyline and spread. Free trial on Google Play.">
+<link rel="canonical" href="https://propgpt.us/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="PropGPT - Know which props hit">
+<meta property="og:description" content="AI-graded player props for NFL, NBA & MLB. Real-time stats, predictions and grades. Free trial on Google Play.">
+<meta property="og:url" content="https://propgpt.us/">
+<meta property="og:image" content="https://propgpt.us/screen-analysis.png">
+<meta name="theme-color" content="#121212">
+<link rel="icon" href="https://play-lh.googleusercontent.com/xYGhzyerhUDILLyZmwC_APGcaVwJNSptPCk4wryOTTxxvgO1s65VgFzBi2he56rfRV5kAf1wW-_cFSTaAFn2=s64-rw">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PropGPT: AI Props Analysis",
+  "operatingSystem": "Android",
+  "applicationCategory": "SportsApplication",
+  "url": "https://propgpt.us/",
+  "downloadUrl": "https://play.google.com/store/apps/details?id=net.orangutech.bestbet",
+  "author": { "@type": "Organization", "name": "Orangutech" },
+  "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.7", "ratingCount": "382" },
+  "offers": { "@type": "Offer", "price": "9.99", "priceCurrency": "USD" }
+}
+</script>
+<style>
+:root{
+  /* Figma "BestBet V2 Edition" tokens */
+  --p50:#F0EBFF; --p200:#D1C0FF; --p300:#BAA2FF; --p400:#9B78FF; --p500:#885DFF;
+  --p600:#6A35FF; --p700:#6030E8; --p800:#4B26B5; --p900:#3A1D8C; --p950:#2D166B;
+  --blue:#2937DC; --pink:#AA3FFF;
+  --bg:#121212; --bg2:#191919; --bg3:#212121; --surface:#3D3D3D;
+  --txt:#FFFFFF; --txt2:#F5F5F5; --mut:#9E9E9E; --mut2:#757575;
+  --lime:linear-gradient(90deg,#BFFB0D 0%,#FCFFF5 100%);
+  --grn:#06C270; --warn:#F08D32; --err:#EE4D37;
+  --line:rgba(255,255,255,.09);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:'Space Grotesk',-apple-system,system-ui,sans-serif;font-weight:500;-webkit-font-smoothing:antialiased;overflow-x:hidden;font-size:14px;line-height:1.5}
+img{display:block;max-width:100%}
+a{color:inherit}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+.lime{background:var(--lime);-webkit-background-clip:text;background-clip:text;color:transparent}
+.glow{position:absolute;border-radius:50%;filter:blur(120px);pointer-events:none}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;background:rgba(18,18,18,.8);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;height:58px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;text-decoration:none;letter-spacing:-.01em}
+.brand img{width:28px;height:28px;border-radius:7px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--p600);color:#fff;font-weight:600;text-decoration:none;border-radius:12px;padding:13px 24px;font-size:14px;box-shadow:0 8px 28px rgba(106,53,255,.4);transition:background .15s,transform .15s,box-shadow .15s;border:0;cursor:pointer;font-family:inherit}
+.btn:hover{background:var(--p700);transform:translateY(-1px);box-shadow:0 12px 34px rgba(106,53,255,.5)}
+.btn.sm{padding:9px 16px;font-size:12px;border-radius:10px}
+
+/* hero */
+.hero{position:relative;padding:52px 0 44px;text-align:center;overflow:hidden}
+.hero .glow{width:520px;height:520px;background:rgba(106,53,255,.25);top:-180px;left:50%;transform:translateX(-50%)}
+.chip{display:inline-flex;align-items:center;gap:7px;background:rgba(106,53,255,.15);border:1px solid rgba(155,120,255,.4);color:var(--p300);font-size:10px;font-weight:600;padding:7px 13px;border-radius:999px;letter-spacing:.1em;text-transform:uppercase}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:var(--grn)}
+.hero h1{font-size:clamp(30px,8.5vw,56px);font-weight:700;line-height:1.06;letter-spacing:-.02em;margin:20px auto 14px;max-width:760px}
+.hero p.sub{color:var(--mut);font-size:clamp(14px,2.8vw,17px);line-height:1.6;max-width:540px;margin:0 auto 26px}
+.cta-row{display:flex;flex-direction:column;align-items:center;gap:12px}
+.gplay img{height:54px;width:auto}
+.rating{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:12px}
+.stars{color:var(--warn);letter-spacing:2px;font-size:12px}
+
+/* hero phone */
+.stage{position:relative;margin:40px auto 0;width:min(280px,72vw)}
+.phone{position:relative;border-radius:46px;border:3px solid var(--surface);background:#000;padding:9px;box-shadow:0 40px 80px rgba(0,0,0,.6),0 0 90px rgba(106,53,255,.28)}
+.phone::before{content:"";position:absolute;top:18px;left:50%;transform:translateX(-50%);width:84px;height:20px;background:#000;border-radius:11px;z-index:2}
+.phone img{border-radius:37px;width:100%}
+.float{position:absolute;background:rgba(33,33,33,.94);border:1px solid var(--line);backdrop-filter:blur(8px);border-radius:12px;padding:9px 13px;font-size:12px;font-weight:600;box-shadow:0 16px 40px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px;white-space:nowrap}
+.float .ic{color:var(--p400);font-size:14px}
+.f1{top:13%;left:-16%;animation:bob 5s ease-in-out infinite}
+.f2{bottom:15%;right:-14%;animation:bob 6s ease-in-out infinite reverse}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+/* stats */
+.stats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg2);margin-top:60px}
+.stats .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:24px 20px;text-align:center}
+.stat b{display:block;font-size:clamp(21px,4.6vw,30px);font-weight:700;background:var(--lime);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat span{color:var(--mut);font-size:10px;letter-spacing:.04em}
+
+/* sections */
+section{padding:64px 0}
+.eyebrow{color:var(--p400);font-weight:600;font-size:10px;letter-spacing:.14em;text-transform:uppercase;text-align:center}
+h2{font-size:clamp(25px,5.5vw,40px);font-weight:700;letter-spacing:-.02em;text-align:center;margin:12px auto 12px;max-width:620px;line-height:1.12}
+.lede{color:var(--mut);text-align:center;max-width:520px;margin:0 auto 40px;line-height:1.6}
+
+/* gallery */
+.gallery{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:10px 20px 24px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.gallery::-webkit-scrollbar{display:none}
+.gallery figure{flex:0 0 min(230px,60vw);scroll-snap-align:center;margin:0}
+.gallery img{border-radius:20px;border:1px solid var(--line);box-shadow:0 20px 50px rgba(0,0,0,.5)}
+
+/* features */
+.grid{display:grid;grid-template-columns:1fr;gap:12px}
+.feat{background:var(--bg3);border:1px solid var(--line);border-radius:18px;padding:24px 20px;transition:border-color .2s,transform .2s}
+.feat:hover{border-color:rgba(155,120,255,.45);transform:translateY(-3px)}
+.feat .ic{width:42px;height:42px;border-radius:11px;background:rgba(106,53,255,.16);border:1px solid rgba(155,120,255,.35);display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:14px;color:var(--p300)}
+.feat h3{font-size:17px;margin-bottom:6px;font-weight:600}
+.feat p{color:var(--mut);font-size:14px;line-height:1.6}
+@media(min-width:720px){.grid{grid-template-columns:repeat(2,1fr)}}
+
+/* steps */
+.steps{display:grid;grid-template-columns:1fr;gap:12px;counter-reset:s}
+.step{position:relative;background:var(--bg3);border:1px solid var(--line);border-radius:18px;padding:26px 20px 22px}
+.step::before{counter-increment:s;content:counter(s);position:absolute;top:-15px;left:20px;width:30px;height:30px;border-radius:50%;background:var(--p600);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;box-shadow:0 6px 18px rgba(106,53,255,.5)}
+.step h3{margin:8px 0 6px;font-size:17px;font-weight:600}
+.step p{color:var(--mut);font-size:14px;line-height:1.6}
+@media(min-width:720px){.steps{grid-template-columns:repeat(3,1fr)}}
+
+/* pricing */
+.price{max-width:440px;margin:0 auto;background:linear-gradient(160deg,rgba(106,53,255,.18),rgba(106,53,255,.04));border:1px solid rgba(155,120,255,.4);border-radius:22px;padding:32px 24px;text-align:center;position:relative;overflow:hidden}
+.price .amt{font-size:44px;font-weight:700;margin:10px 0 2px;letter-spacing:-.02em}
+.price .per{color:var(--mut);font-size:12px;margin-bottom:18px}
+.price ul{list-style:none;text-align:left;margin:0 auto 22px;max-width:290px;display:grid;gap:9px}
+.price li{display:flex;gap:10px;color:var(--txt2);font-size:14px;line-height:1.5}
+.price li::before{content:"✓";color:var(--grn);font-weight:700;flex:0 0 auto}
+.trial{display:inline-block;background:rgba(6,194,112,.12);border:1px solid rgba(6,194,112,.45);color:var(--grn);font-size:10px;font-weight:700;padding:5px 12px;border-radius:999px;letter-spacing:.08em;text-transform:uppercase}
+
+/* faq */
+.faq{max-width:620px;margin:0 auto;display:grid;gap:10px}
+details{background:var(--bg3);border:1px solid var(--line);border-radius:14px;padding:0 18px}
+summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0;font-weight:600;font-size:14px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--p400);font-size:21px;font-weight:400;transition:transform .2s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:var(--mut);font-size:14px;line-height:1.65;padding:0 0 16px}
+
+/* final cta */
+.final{position:relative;text-align:center;overflow:hidden}
+.final .glow{width:480px;height:480px;background:rgba(106,53,255,.22);bottom:-220px;left:50%;transform:translateX(-50%)}
+.final h2{max-width:540px}
+
+footer{border-top:1px solid var(--line);padding:32px 0 40px;color:var(--mut2);font-size:12px}
+footer .wrap{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+footer a{color:var(--mut);text-decoration:none}
+footer a:hover{color:var(--txt)}
+.foot-links{display:flex;gap:20px}
+@media(prefers-reduced-motion:reduce){.f1,.f2{animation:none}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <img src="https://play-lh.googleusercontent.com/xYGhzyerhUDILLyZmwC_APGcaVwJNSptPCk4wryOTTxxvgO1s65VgFzBi2he56rfRV5kAf1wW-_cFSTaAFn2=s64-rw" alt="PropGPT app icon">
+      PropGPT
+    </a>
+    <a class="btn sm" href="https://play.google.com/store/apps/details?id=net.orangutech.bestbet" rel="noopener">Get the app</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="glow"></div>
+  <div class="wrap">
+    <span class="chip"><span class="dot"></span>AI-powered props research</span>
+    <h1>Know which props <span class="lime">hit</span>.</h1>
+    <p class="sub">PropGPT's AI analyzes live stats and grades every player prop, so you bet with an edge instead of a hunch. NFL, NBA &amp; MLB.</p>
+    <div class="cta-row">
+      <a class="gplay" href="https://play.google.com/store/apps/details?id=net.orangutech.bestbet" rel="noopener" aria-label="Get PropGPT on Google Play">
+        <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play">
+      </a>
+      <div class="rating"><span class="stars">★★★★★</span> 4.7 · 382 reviews on Google Play</div>
+    </div>
+    <div class="stage">
+      <div class="float f1"><span class="ic">⚡</span> Real-time AI grades</div>
+      <div class="phone">
+        <img src="hero-curry.png" alt="PropGPT app showing AI player analysis for Stephen Curry with a 100/100 score" fetchpriority="high">
+      </div>
+      <div class="float f2"><span class="ic">📊</span> Props · O/U · ML · Spread</div>
+    </div>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="wrap">
+    <div class="stat"><b>50K+</b><span>monthly active users</span></div>
+    <div class="stat"><b>4.7★</b><span>382 reviews</span></div>
+    <div class="stat"><b>5K+</b><span>downloads</span></div>
+    <div class="stat"><b>5M+</b><span>creator views</span></div>
+  </div>
+</div>
+
+<section id="screens">
+  <div class="eyebrow">Inside the app</div>
+  <h2>Your research, done in seconds</h2>
+  <p class="lede">Live stats in, clear grades out. Straight from the PropGPT design files.</p>
+  <div class="gallery">
+    <figure><img src="screen-analysis.png" alt="Real-time AI analysis screen with player score and recent performance chart" loading="lazy"></figure>
+    <figure><img src="screen-parlay.png" alt="Bets screen showing graded parlay legs for NFL and NBA players" loading="lazy"></figure>
+    <figure><img src="screen-march-madness.png" alt="March Madness picker screen with Cinderella pick and team efficiency grades" loading="lazy"></figure>
+    <figure><img src="screen-home.png" alt="PropGPT home screen with live match tracking and top picks" loading="lazy"></figure>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="eyebrow">Why PropGPT</div>
+    <h2>An edge on every bet you research</h2>
+    <p class="lede">Advanced AI and machine learning built for one thing: sharper sports betting decisions.</p>
+    <div class="grid">
+      <div class="feat"><div class="ic">🤖</div><h3>AI-generated predictions &amp; grades</h3><p>Advanced algorithms analyze live stats and grade every play, giving you a clear read before you put money down.</p></div>
+      <div class="feat"><div class="ic">⚡</div><h3>Real-time data</h3><p>The models run on real-time statistics, so you're always working from the most current information, not yesterday's numbers.</p></div>
+      <div class="feat"><div class="ic">🎯</div><h3>Every major bet type</h3><p>Player props, game over/unders, moneyline, and spread. Precise predictions and grades across all the ways you bet.</p></div>
+      <div class="feat"><div class="ic">🏈</div><h3>NFL, NBA &amp; MLB. More coming.</h3><p>Deep coverage of the three biggest leagues today, with WNBA, NCAA basketball, NCAA football, and NHL on the way.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="eyebrow">How it works</div>
+    <h2>From question to answer in three taps</h2>
+    <p class="lede">No spreadsheets. No hours of research. Just ask.</p>
+    <div class="steps">
+      <div class="step"><h3>Pick a player or game</h3><p>Browse today's slate across the NFL, NBA, and MLB, or jump straight to the prop you're eyeing.</p></div>
+      <div class="step"><h3>Get the AI's read</h3><p>PropGPT breaks down the matchup with real-time stats and hands you a prediction and grade.</p></div>
+      <div class="step"><h3>Bet with confidence</h3><p>Walk into your sportsbook knowing exactly why you like the play, backed by data.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="eyebrow">Pricing</div>
+    <h2>Try it free</h2>
+    <p class="lede">Every new user gets a free trial with full access. No features locked.</p>
+    <div class="price">
+      <span class="trial">Free trial included</span>
+      <div class="amt">$9.99</div>
+      <div class="per">per week after your trial · cancel anytime</div>
+      <ul>
+        <li>Exclusive AI-powered insights and predictions</li>
+        <li>Player-specific props analysis</li>
+        <li>Real-time stats and updates</li>
+        <li>NFL, NBA &amp; MLB coverage</li>
+      </ul>
+      <a class="btn" href="https://play.google.com/store/apps/details?id=net.orangutech.bestbet" rel="noopener">Start your free trial</a>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="eyebrow">FAQ</div>
+    <h2>Questions, answered</h2>
+    <div class="faq">
+      <details><summary>What is PropGPT?</summary><p>PropGPT is an AI-powered sports betting research app. It uses machine learning and real-time stats to generate predictions and grades for player props and game lines, so you can make informed picks fast.</p></details>
+      <details><summary>Which sports does it cover?</summary><p>NFL, NBA, and MLB today, with WNBA, NCAA basketball, NCAA football, and NHL expansion planned.</p></details>
+      <details><summary>What bet types does it analyze?</summary><p>Player prop bets, game over/unders, moneyline, and spread - with AI-generated predictions and grades for each.</p></details>
+      <details><summary>Is there a free trial?</summary><p>Yes. New users get a free trial with full access to every feature, including AI insights, props analysis, and real-time updates.</p></details>
+      <details><summary>How much does it cost after the trial?</summary><p>$9.99 per week. The subscription renews automatically and you can cancel anytime in your Google Play subscriptions, at least 24 hours before renewal.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="glow"></div>
+  <div class="wrap">
+    <h2>Your next prop,<br>graded by <span class="lime">AI</span>.</h2>
+    <p class="lede">Join 50,000+ bettors using PropGPT to find the props worth betting.</p>
+    <a class="gplay" href="https://play.google.com/store/apps/details?id=net.orangutech.bestbet" rel="noopener" aria-label="Get PropGPT on Google Play">
+      <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" style="height:62px;margin:0 auto">
+    </a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="/"><img src="https://play-lh.googleusercontent.com/xYGhzyerhUDILLyZmwC_APGcaVwJNSptPCk4wryOTTxxvgO1s65VgFzBi2he56rfRV5kAf1wW-_cFSTaAFn2=s64-rw" alt="">PropGPT</a>
+    <div class="foot-links">
+      <a href="mailto:support@propgpt.us">support@propgpt.us</a>
+      <a href="https://www.orangutech.net/terms-of-service" rel="noopener">Terms</a>
+    </div>
+    <div>© 2026 Orangutech LLC. Bet responsibly. 21+.</div>
+  </div>
+</footer>
+
+</body>
+</html>
