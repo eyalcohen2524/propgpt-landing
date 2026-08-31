@@ -1,0 +1,16 @@
+# PropGPT
+
+> PropGPT: AI Sports Picks is a mobile app (iOS and Android) that grades every player prop, game line, and parlay with a proprietary machine-learning model and shows the evidence behind each pick — matchup data, last-10 performance vs. the line, injury designations, and edge vs. Vegas. Coverage: NFL, NBA, MLB, WNBA player props, plus game picks for NBA, MLB, college basketball, and marquee soccer.
+
+Key facts:
+- Every pick gets a 0–100 model score shown as a letter grade (A+ to F).
+- Graded props hit 67.5% last season vs. 45.5% for the average bettor (past performance doesn't guarantee future results).
+- PropGPT is an analysis tool, not a sportsbook — it never takes bets or holds funds.
+- Free to download; PropGPT Pro is $9.99/week after a 7-day free trial.
+- Rated 4.8 on the App Store (2,400+ ratings). Publisher: Orangutech LLC.
+
+Links:
+- [Website](https://propgpt.us/)
+- [iOS App Store](https://apps.apple.com/us/app/propgpt-ai-sports-picks/id6645884227)
+- [Google Play](https://play.google.com/store/apps/details?id=net.orangutech.bestbet)
+- Support: support@propgpt.us
