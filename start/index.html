@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PropGPT — Get Your Board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-itunes-app" content="app-id=6645884227">
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@900&family=Space+Grotesk:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --ink:#0a0a0a; --panel:#141414; --panel2:#1b1b1b;
+    --line:rgba(255,255,255,.10); --line-soft:rgba(255,255,255,.06);
+    --text:#fff; --muted:#a3a3a3; --dim:#6f6f6f;
+    --lime:#bcfb02; --lime-soft:rgba(188,251,2,.14);
+    --win:#1dce86; --miss:#ff6257;
+    --display:'Anton','Arial Narrow',sans-serif;
+    --body:'Space Grotesk','Helvetica Neue',Arial,sans-serif;
+    --mark:'Montserrat','Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--ink);color:var(--text);font-family:var(--body);
+    -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;align-items:center;
+  }
+  ::selection{background:var(--lime);color:#0a0a0a}
+  a{color:inherit}
+  button{font-family:var(--body);cursor:pointer}
+  button:focus-visible,a:focus-visible{outline:2px solid var(--lime);outline-offset:3px;border-radius:6px}
+
+  .shell{width:100%;max-width:430px;min-height:100dvh;display:flex;flex-direction:column;padding:0 20px calc(20px + env(safe-area-inset-bottom))}
+  .top{display:flex;flex-direction:column;gap:14px;padding:18px 0 6px;position:sticky;top:0;background:var(--ink);z-index:5}
+  .top-row{display:flex;align-items:center;justify-content:space-between;min-height:28px}
+  .wordmark{font-family:var(--mark);font-weight:900;font-size:19px;letter-spacing:-.02em}
+  .wordmark span{color:var(--lime)}
+  .backbtn{border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--muted);width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;visibility:hidden}
+  .backbtn.show{visibility:visible}
+  .progress{height:4px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+  .progress i{display:block;height:100%;width:0;background:var(--lime);border-radius:999px;transition:width .45s cubic-bezier(.6,0,.2,1)}
+
+  .stage{flex:1;display:flex;flex-direction:column;padding:22px 0 10px}
+  .step{display:none;flex:1;flex-direction:column;animation:in .38s cubic-bezier(.3,0,.2,1)}
+  .step.on{display:flex}
+  @keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--lime);margin-bottom:12px}
+  h1{font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:.95;letter-spacing:.005em;font-size:clamp(40px,11vw,52px);text-wrap:balance}
+  h1 .hl{color:var(--lime)}
+  h2{font-family:var(--display);font-weight:400;text-transform:uppercase;line-height:1.02;font-size:clamp(28px,7.4vw,34px);text-wrap:balance}
+  .sub{color:var(--muted);font-size:15.5px;line-height:1.6;margin-top:12px}
+  .sub b{color:var(--text)}
+
+  .opts{display:flex;flex-direction:column;gap:10px;margin-top:26px}
+  .opt{
+    text-align:left;background:var(--panel);border:1px solid var(--line-soft);border-radius:16px;
+    color:var(--text);padding:16px 17px;font-size:16px;font-weight:600;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    transition:border-color .15s, background .15s, transform .1s;
+  }
+  .opt small{display:block;font-weight:500;font-size:12.5px;color:var(--dim);margin-top:2px}
+  .opt:active{transform:scale(.985)}
+  .opt.sel{border-color:rgba(188,251,2,.55);background:var(--lime-soft)}
+  .opt .tick{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;color:#0a0a0a;font-size:12px;font-weight:800}
+  .opt.sel .tick{background:var(--lime);border-color:var(--lime)}
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:26px}
+  .chip{
+    border:1px solid var(--line);background:var(--panel);color:var(--text);
+    border-radius:999px;padding:12px 18px;font-size:14.5px;font-weight:700;letter-spacing:.04em;
+    transition:border-color .15s, background .15s;
+  }
+  .chip.sel{background:var(--lime);border-color:var(--lime);color:#0c0f00}
+
+  .cta{
+    margin-top:auto;position:sticky;bottom:0;padding-top:14px;
+    background:linear-gradient(to top, var(--ink) 70%, transparent);
+  }
+  .btn{
+    width:100%;border:0;border-radius:999px;padding:17px 20px;font-size:16.5px;font-weight:700;
+    background:var(--lime);color:#0c0f00;transition:transform .15s, box-shadow .15s, opacity .15s;
+    display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(188,251,2,.3)}
+  .btn[disabled]{opacity:.35;pointer-events:none}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text);margin-top:10px}
+  .fine{font-size:11px;color:var(--dim);text-align:center;margin-top:12px;line-height:1.55}
+
+  .rating-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.03);margin-bottom:22px;align-self:flex-start}
+  .rating-pill .stars{color:var(--lime);letter-spacing:2px;font-size:11px}
+  .rating-pill b{color:var(--text)}
+
+  /* Accuracy bars */
+  .race{display:flex;flex-direction:column;gap:20px;margin-top:30px}
+  .rb-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .rb-label{font-size:13.5px;font-weight:600;color:var(--muted)}
+  .rb-val{font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
+  .rb-track{height:13px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden}
+  .rb-fill{height:100%;border-radius:999px;width:0;transition:width 1.2s cubic-bezier(.55,0,.15,1)}
+  .rb.avg .rb-fill{background:#3a3a3a}
+  .rb.exp .rb-fill{background:#585858}
+  .rb.gpt .rb-label,.rb.gpt .rb-val{color:var(--lime)}
+  .rb.gpt .rb-fill{background:linear-gradient(90deg,#8fd200,var(--lime));box-shadow:0 0 20px rgba(188,251,2,.3)}
+  .race-note{font-size:11.5px;color:var(--dim);margin-top:16px;line-height:1.6}
+
+  /* Build screen */
+  .build{display:flex;flex-direction:column;gap:15px;margin-top:34px}
+  .build-line{display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600;color:var(--dim);opacity:0;transform:translateY(8px);transition:opacity .4s, transform .4s, color .3s}
+  .build-line.show{opacity:1;transform:none}
+  .build-line.done{color:var(--text)}
+  .build-line .dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#0a0a0a;transition:background .3s,border-color .3s}
+  .build-line.done .dot{background:var(--win);border-color:var(--win)}
+
+  /* Reviews */
+  .rev-big{display:flex;align-items:baseline;gap:14px;margin-top:26px}
+  .rev-big .n{font-family:var(--display);font-size:64px;line-height:1}
+  .rev-big .stars{color:var(--lime);font-size:17px;letter-spacing:3px}
+  .rev-big .cnt{font-size:12.5px;color:var(--dim);font-weight:600}
+  .rev-card{background:var(--panel);border:1px solid var(--line-soft);border-radius:16px;padding:17px 18px;margin-top:12px}
+  .rev-card .rt{font-size:13.5px;font-weight:700;display:flex;gap:9px;align-items:center}
+  .rev-card .rt::before{content:"★★★★★";color:var(--lime);font-size:10.5px;letter-spacing:2px}
+  .rev-card .q{font-size:13.5px;color:var(--muted);line-height:1.6;margin-top:7px}
+  .rev-card .who{font-size:11.5px;color:var(--dim);margin-top:8px;font-weight:600}
+
+  /* Paywall */
+  .plan{border:1px solid rgba(188,251,2,.4);border-radius:20px;padding:20px;margin-top:24px;background:radial-gradient(140% 180% at 10% 0%, rgba(188,251,2,.09), transparent 50%), var(--panel);position:relative;overflow:hidden}
+  .plan .flag{position:absolute;top:0;right:0;background:var(--lime);color:#0c0f00;font-size:10px;font-weight:800;letter-spacing:.08em;padding:5px 12px;border-radius:0 0 0 12px}
+  .plan .pl-title{font-family:var(--display);font-size:24px;text-transform:uppercase}
+  .plan .pl-price{font-size:13.5px;color:var(--muted);font-weight:600;margin-top:5px}
+  .plan .pl-price b{color:var(--text)}
+  .feats{list-style:none;margin-top:16px;display:flex;flex-direction:column;gap:10px}
+  .feats li{display:flex;gap:10px;font-size:13.5px;color:var(--muted);font-weight:500;align-items:flex-start}
+  .feats li::before{content:"";flex:none;width:16px;height:16px;margin-top:1px;border-radius:50%;background:var(--lime-soft);border:1px solid rgba(188,251,2,.5);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.6 2.6L12 5.5' fill='none' stroke='%23bcfb02' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-size:10px;background-position:center;background-repeat:no-repeat}
+  .applebadge{display:flex;align-items:center;justify-content:center;gap:8px;font-size:11.5px;color:var(--dim);font-weight:600;margin-top:14px}
+</style>
+<script>
+  /* ---- PostHog (same project as the app) ---- */
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+  posthog.init("phc_OwIViiir6xO5CSomsQgJxCjAuyE4AR6c2tvUyYXoy8v",{api_host:"https://us.i.posthog.com",autocapture:false,capture_pageview:false});
+</script>
+</head>
+<body>
+<div class="shell">
+  <div class="top">
+    <div class="top-row">
+      <button class="backbtn" id="backBtn" aria-label="Back"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span class="wordmark">PROP<span>GPT</span></span>
+      <span style="width:30px"></span>
+    </div>
+    <div class="progress" aria-hidden="true"><i id="pbar"></i></div>
+  </div>
+
+  <div class="stage" id="stage">
+
+    <!-- 0 · Welcome -->
+    <section class="step" data-step="welcome">
+      <span class="rating-pill"><span class="stars">★★★★★</span> <b>4.8</b> · 2,400+ ratings</span>
+      <h1>Stop guess&shy;ing<span class="hl">.</span></h1>
+      <p class="sub">Answer <b>4 quick questions</b> and PropGPT builds tonight's board for you — every player prop and game line graded by a real model, with the evidence to back it.</p>
+      <div class="cta">
+        <button class="btn" data-next>Build my board</button>
+        <p class="fine">Free to start · 60 seconds · 21+ only</p>
+      </div>
+    </section>
+
+    <!-- 1 · Leagues -->
+    <section class="step" data-step="q_leagues">
+      <span class="eyebrow">Question 1 of 4</span>
+      <h2>Which leagues do you bet?</h2>
+      <p class="sub">Pick all that apply — your board covers each one.</p>
+      <div class="chips" id="leagueChips">
+        <button class="chip" data-v="NFL">NFL</button>
+        <button class="chip" data-v="NBA">NBA</button>
+        <button class="chip" data-v="MLB">MLB</button>
+        <button class="chip" data-v="WNBA">WNBA</button>
+        <button class="chip" data-v="CBB">College Hoops</button>
+        <button class="chip" data-v="Soccer">Soccer</button>
+      </div>
+      <div class="cta">
+        <button class="btn" id="leaguesNext" disabled data-next>Continue</button>
+      </div>
+    </section>
+
+    <!-- 2 · Bet type -->
+    <section class="step" data-step="q_bettype">
+      <span class="eyebrow">Question 2 of 4</span>
+      <h2>What do you bet most?</h2>
+      <div class="opts" data-single="bettype">
+        <button class="opt" data-v="props">Player props <small>Points, yards, rebounds, total bases…</small><span class="tick">✓</span></button>
+        <button class="opt" data-v="lines">Game lines <small>Spreads, moneylines, totals</small><span class="tick">✓</span></button>
+        <button class="opt" data-v="parlays">Parlays <small>Multi-leg tickets</small><span class="tick">✓</span></button>
+        <button class="opt" data-v="all">All of it <small>Whatever looks good tonight</small><span class="tick">✓</span></button>
+      </div>
+    </section>
+
+    <!-- 3 · Record -->
+    <section class="step" data-step="q_record">
+      <span class="eyebrow">Question 3 of 4</span>
+      <h2>How's your record lately?</h2>
+      <div class="opts" data-single="record">
+        <button class="opt" data-v="up">Up — and I want to stay up<span class="tick">✓</span></button>
+        <button class="opt" data-v="even">About even<span class="tick">✓</span></button>
+        <button class="opt" data-v="down">Down more than I'd like<span class="tick">✓</span></button>
+        <button class="opt" data-v="untracked">Honestly? I don't track it<span class="tick">✓</span></button>
+      </div>
+    </section>
+
+    <!-- 4 · Accuracy interstitial -->
+    <section class="step" data-step="race">
+      <span class="eyebrow">The model vs. the field</span>
+      <h2 id="raceHead">Most bettors hit 45.5%.</h2>
+      <p class="sub">Every PropGPT pick is graded before the game and tracked after it. Last season the model hit <b>67.5% of graded props</b>.</p>
+      <div class="race">
+        <div class="rb avg"><div class="rb-top"><span class="rb-label">Average bettor</span><span class="rb-val">45.5%</span></div><div class="rb-track"><div class="rb-fill" data-w="45.5"></div></div></div>
+        <div class="rb exp"><div class="rb-top"><span class="rb-label">Expert consensus</span><span class="rb-val">51.5%</span></div><div class="rb-track"><div class="rb-fill" data-w="51.5"></div></div></div>
+        <div class="rb gpt"><div class="rb-top"><span class="rb-label">PropGPT model</span><span class="rb-val">67.5%</span></div><div class="rb-track"><div class="rb-fill" data-w="67.5"></div></div></div>
+      </div>
+      <p class="race-note">Past performance doesn't guarantee future results. A high grade means strong model conviction, not a sure thing. Bet responsibly.</p>
+      <div class="cta"><button class="btn" data-next>Keep going</button></div>
+    </section>
+
+    <!-- 5 · Frequency -->
+    <section class="step" data-step="q_freq">
+      <span class="eyebrow">Question 4 of 4</span>
+      <h2>How often do you bet?</h2>
+      <div class="opts" data-single="freq">
+        <button class="opt" data-v="daily">Most days<span class="tick">✓</span></button>
+        <button class="opt" data-v="weekly">A few times a week<span class="tick">✓</span></button>
+        <button class="opt" data-v="weekends">Weekends & big games<span class="tick">✓</span></button>
+        <button class="opt" data-v="rarely">Once in a while<span class="tick">✓</span></button>
+      </div>
+    </section>
+
+    <!-- 6 · Building -->
+    <section class="step" data-step="build">
+      <span class="eyebrow">One moment</span>
+      <h2>Building your board</h2>
+      <div class="build" id="buildList"></div>
+    </section>
+
+    <!-- 7 · Social proof -->
+    <section class="step" data-step="proof">
+      <span class="eyebrow">From the App Store</span>
+      <h2>Bettors grade us back</h2>
+      <div class="rev-big"><span class="n">4.8</span><span><span class="stars">★★★★★</span><br><span class="cnt">2,400+ App Store ratings</span></span></div>
+      <div class="rev-card"><div class="rt">Somehow their NFL hasn't missed</div><p class="q">"I've used this app for NBA and MLB but this is the first time they got NFL on their app… worth a trial for sure."</p><p class="who">Goosanator321 · App Store review</p></div>
+      <div class="rev-card"><div class="rt">I like this app</div><p class="q">"PropGPT helped me tighten up my picks heavy. The analysis is deep but easy to understand, and it actually shows value and risk instead of guessing."</p><p class="who">Nah11112 · App Store review</p></div>
+      <div class="cta"><button class="btn" data-next>Show me my board</button></div>
+    </section>
+
+    <!-- 8 · Paywall -->
+    <section class="step" data-step="paywall">
+      <span class="eyebrow">You're set</span>
+      <h2 id="pwHead">Your board is ready.</h2>
+      <p class="sub" id="pwSub">Unlock every graded pick with PropGPT Pro — free for 7 days.</p>
+      <div class="plan">
+        <span class="flag">7-DAY FREE TRIAL</span>
+        <div class="pl-title">PropGPT Pro</div>
+        <div class="pl-price"><b>$0 today</b> · then $9.99/week · cancel anytime</div>
+        <ul class="feats">
+          <li>Every graded pick, every league, every day</li>
+          <li>Full "why this pick" breakdowns and last-10 trends</li>
+          <li>Parlay grading with weak-leg detection</li>
+          <li>Injury-aware live re-grades</li>
+        </ul>
+      </div>
+      <div class="cta">
+        <a class="btn" id="iosCta" href="https://apps.apple.com/us/app/propgpt-ai-sports-picks/id6645884227" rel="noopener">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 12.54c-.03-2.66 2.17-3.94 2.27-4-1.24-1.81-3.17-2.06-3.85-2.09-1.63-.17-3.2.96-4.03.96-.84 0-2.12-.94-3.49-.91-1.79.03-3.45 1.04-4.37 2.65-1.87 3.24-.48 8.03 1.34 10.66.89 1.29 1.95 2.73 3.34 2.68 1.34-.05 1.85-.87 3.47-.87 1.61 0 2.08.87 3.49.84 1.44-.03 2.36-1.31 3.24-2.6 1.02-1.49 1.44-2.94 1.46-3.01-.03-.02-2.8-1.08-2.87-4.31zM14.4 4.72c.74-.9 1.24-2.14 1.1-3.38-1.07.04-2.36.71-3.12 1.6-.69.79-1.29 2.06-1.13 3.27 1.19.09 2.41-.6 3.15-1.49z"/></svg>
+          Start free trial on the App Store
+        </a>
+        <a class="btn ghost" id="playCta" href="https://play.google.com/store/apps/details?id=net.orangutech.bestbet" rel="noopener">Get it on Google Play</a>
+        <p class="fine">Subscription billed securely by the App Store — no card entered on the web. Auto-renews after trial; cancel anytime in your store settings. PropGPT is analysis, not a sportsbook. 21+ · If gambling is a problem, call 1-800-GAMBLER.</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<noscript><div style="padding:24px;text-align:center;font-family:sans-serif"><a href="https://apps.apple.com/us/app/propgpt-ai-sports-picks/id6645884227" style="color:#bcfb02">Download PropGPT on the App Store →</a></div></noscript>
+
+<script>
+(function(){
+  "use strict";
+  var ph = window.posthog;
+  function track(ev, props){ try{ ph && ph.capture(ev, props||{}); }catch(e){} }
+
+  /* ---- Attribution capture (MoonGate-style param family) ---- */
+  var KEYS = ["utm_source","utm_medium","utm_campaign","campaign_name","campaign_id","adset_name","adset_id","ad_name","ad_id","fbclid","ios_pp_id","fpid","fsid","gclid","ttclid"];
+  var qs = new URLSearchParams(location.search);
+  var attr = {};
+  KEYS.forEach(function(k){ var v = qs.get(k); if(v) attr[k]=v; });
+  try{
+    var saved = JSON.parse(localStorage.getItem("pg_attr")||"{}");
+    attr = Object.assign({}, saved, attr);                 // fresh params win
+    localStorage.setItem("pg_attr", JSON.stringify(attr));
+  }catch(e){}
+  try{ ph && ph.register(Object.keys(attr).length ? attr : {utm_source:"direct"}); }catch(e){}
+
+  /* ---- Step machine ---- */
+  var steps = Array.prototype.slice.call(document.querySelectorAll(".step"));
+  var order = steps.map(function(s){ return s.dataset.step; });
+  var answers = {};
+  var idx = 0, visited = [0];
+
+  var pbar = document.getElementById("pbar");
+  var backBtn = document.getElementById("backBtn");
+
+  function show(i, push){
+    idx = i;
+    steps.forEach(function(s,j){ s.classList.toggle("on", j===i); });
+    pbar.style.width = Math.round((i)/(steps.length-1)*100) + "%";
+    backBtn.classList.toggle("show", i>0 && order[i]!=="build");
+    window.scrollTo(0,0);
+    if(push!==false){ history.pushState({i:i},""); }
+    track("web_funnel_step", {step: order[i], step_index: i, answers: answers});
+    if(order[i]==="race") runRace();
+    if(order[i]==="build") runBuild();
+    if(order[i]==="paywall") personalizePaywall();
+  }
+  function next(){ if(idx<steps.length-1) show(idx+1); }
+
+  window.addEventListener("popstate", function(e){
+    var i = e.state && typeof e.state.i==="number" ? e.state.i : 0;
+    if(order[i]==="build") i = Math.max(0,i-1);
+    show(i,false);
+  });
+  backBtn.addEventListener("click", function(){ history.back(); });
+
+  document.querySelectorAll("[data-next]").forEach(function(b){
+    b.addEventListener("click", function(){ next(); });
+  });
+
+  /* Multi-select leagues */
+  var leagueChips = document.getElementById("leagueChips");
+  var leaguesNext = document.getElementById("leaguesNext");
+  answers.leagues = [];
+  leagueChips.addEventListener("click", function(e){
+    var c = e.target.closest(".chip"); if(!c) return;
+    c.classList.toggle("sel");
+    answers.leagues = Array.prototype.map.call(leagueChips.querySelectorAll(".chip.sel"), function(x){ return x.dataset.v; });
+    leaguesNext.disabled = answers.leagues.length===0;
+    track("web_funnel_answer", {question:"leagues", value:answers.leagues});
+  });
+
+  /* Single-select questions (auto-advance) */
+  document.querySelectorAll("[data-single]").forEach(function(group){
+    var key = group.dataset.single;
+    group.addEventListener("click", function(e){
+      var o = e.target.closest(".opt"); if(!o) return;
+      group.querySelectorAll(".opt").forEach(function(x){ x.classList.remove("sel"); });
+      o.classList.add("sel");
+      answers[key] = o.dataset.v;
+      track("web_funnel_answer", {question:key, value:o.dataset.v});
+      setTimeout(next, 320);
+    });
+  });
+
+  /* Accuracy race */
+  function runRace(){
+    var head = document.getElementById("raceHead");
+    if(answers.record==="down") head.textContent = "You don't have to be most bettors.";
+    else if(answers.record==="up") head.textContent = "Stay up. Keep the edge.";
+    else head.textContent = "Most bettors hit 45.5%.";
+    setTimeout(function(){
+      document.querySelectorAll(".rb-fill").forEach(function(f,i){
+        setTimeout(function(){ f.style.width = f.dataset.w + "%"; }, i*200);
+      });
+    }, 250);
+  }
+
+  /* Build screen */
+  function runBuild(){
+    var list = document.getElementById("buildList");
+    var lg = answers.leagues.length ? answers.leagues.slice(0,2).join(" + ") : "tonight's";
+    var lines = [
+      "Scanning the " + lg + " board",
+      "Grading every prop 0–100",
+      "Checking injuries & matchups",
+      "Locking in tonight's top picks"
+    ];
+    list.innerHTML = "";
+    lines.forEach(function(txt){
+      var d = document.createElement("div");
+      d.className = "build-line";
+      d.innerHTML = '<span class="dot">✓</span>' + txt;
+      list.appendChild(d);
+    });
+    var els = list.querySelectorAll(".build-line");
+    els.forEach(function(el,i){
+      setTimeout(function(){ el.classList.add("show"); }, 200 + i*550);
+      setTimeout(function(){ el.classList.add("done"); }, 600 + i*550);
+    });
+    setTimeout(next, 200 + lines.length*550 + 700);
+  }
+
+  /* Paywall personalization + conversion tracking */
+  function personalizePaywall(){
+    var h = document.getElementById("pwHead");
+    if(answers.leagues && answers.leagues.length){
+      var lg = answers.leagues.slice(0,2).join(" + ");
+      var extra = answers.leagues.length>2 ? " (+" + (answers.leagues.length-2) + " more)" : "";
+      h.textContent = "Your " + lg + extra + " board is ready.";
+    }
+    track("web_funnel_paywall_view", {answers: answers});
+  }
+  function storeClick(platform){
+    return function(){ track("web_funnel_store_click", {platform: platform, answers: answers}); };
+  }
+  document.getElementById("iosCta").addEventListener("click", storeClick("ios"));
+  document.getElementById("playCta").addEventListener("click", storeClick("android"));
+
+  /* Kickoff */
+  history.replaceState({i:0},"");
+  show(0,false);
+  track("web_funnel_view", {path: location.pathname});
+})();
+</script>
+</body>
+</html>
