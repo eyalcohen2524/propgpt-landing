@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PropGPT — Get Tonight's Board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-itunes-app" content="app-id=6645884227">
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;500;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap">
+<style>
+  /* ============ Tokens — mirrors src/components/ui/colors.ts exactly ============ */
+  :root{
+    --bg:#0A0A0A;                    /* onboarding BG hsl(0 0% 4%) */
+    --surface:#141414;               /* colors.surface */
+    --raised:#1C1C1C;                /* colors.surfaceRaised */
+    --glass:rgba(255,255,255,.10);   /* borderGlass */
+    --glass-br:rgba(255,255,255,.18);/* borderGlassBright */
+    --lime:#D0FF14;                  /* lime400 hsl(72 100% 54%) */
+    --lime-dim:rgba(208,255,20,.14); /* lime400Dim */
+    --white:#fff;
+    --g400:#BDBDBD; --g500:#9E9E9E; --g600:#757575; --g800:#212121; --g900:#121212;
+    --win:#1DCE86; --loss:#FF6257;
+    --win-tint:rgba(29,206,134,.12); --win-border:rgba(29,206,134,.35);
+    --royal:#5B21CF;                 /* splash purple */
+    --anton:'Anton','Arial Narrow',sans-serif;
+    --mont:'Montserrat','Helvetica Neue',Arial,sans-serif;
+    --sg:'Space Grotesk','Helvetica Neue',Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{background:var(--bg)}
+  body{
+    background:var(--bg);color:var(--white);font-family:var(--mont);
+    -webkit-font-smoothing:antialiased;text-size-adjust:100%;-webkit-text-size-adjust:100%;
+    display:flex;flex-direction:column;align-items:center;position:relative;
+  }
+  /* bg-noise.png equivalent: SVG turbulence grain over the flat bg */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  ::selection{background:var(--lime);color:#0a0a0a}
+  button{font-family:inherit;cursor:pointer;color:inherit;background:none;border:0}
+  button:focus-visible,a:focus-visible{outline:2px solid var(--lime);outline-offset:3px;border-radius:6px}
+  img{display:block}
+
+  .shell{width:100%;max-width:430px;position:relative;z-index:1}
+
+  /* ============ Splash (AnimatedSplash.tsx) ============ */
+  #splash{
+    position:fixed;inset:0;z-index:50;background:var(--royal);
+    display:flex;align-items:center;justify-content:center;
+  }
+  #splash img{width:260px;height:auto}
+  #splash.out{animation:splashOut .45s cubic-bezier(.55,.085,.68,.53) forwards}
+  @keyframes splashOut{to{transform:scale(2);opacity:0}}
+
+  /* ============ Screens ============ */
+  .step{display:none;min-height:100dvh;flex-direction:column;position:relative;overflow:hidden}
+  .step.on{display:flex}
+  .pad{padding-left:28px;padding-right:28px}
+
+  /* Entrance animations (FadeInDown / FadeInUp) */
+  .on .a-dn,.on .a-up{opacity:0;animation:.6s cubic-bezier(.25,.46,.45,.94) forwards}
+  .on .a-dn{animation-name:aDn}
+  .on .a-up{animation-name:aUp}
+  @keyframes aDn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+  @keyframes aUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .d150{animation-delay:.15s!important}.d250{animation-delay:.25s!important}
+  .d300{animation-delay:.3s!important}.d500{animation-delay:.5s!important}
+  .d600{animation-delay:.6s!important}.d700{animation-delay:.7s!important}.d900{animation-delay:.9s!important}
+
+  .logo-row{display:flex;justify-content:center}
+  .logo-row img{width:96px;height:24px;object-fit:contain}
+
+  /* OnboardingHeading */
+  .oh{display:flex;flex-direction:column;gap:4px}
+  .oh-title{font-family:var(--mont);font-weight:900;font-size:44px;line-height:50px;color:var(--white);white-space:nowrap}
+  .oh-sub{font-family:var(--mont);font-weight:500;font-size:16px;line-height:22px;color:var(--white);white-space:nowrap}
+  .oh-sub .ac{color:var(--lime)}
+  .oh-body{font-size:14px;line-height:18px;color:var(--g400)}
+
+  /* Buttons (ui/button.tsx variant "important") */
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    border-radius:999px;padding:16px 32px;background:var(--lime);color:#000;
+    font-family:var(--sg);font-weight:700;font-size:16px;line-height:18px;
+    text-transform:uppercase;letter-spacing:.8px;text-decoration:none;width:100%;
+    transition:transform .12s, opacity .15s;
+  }
+  .btn:active{transform:scale(.98)}
+  .btn[disabled]{background:var(--g800);color:var(--g500);pointer-events:none}
+  .btn[disabled] svg path{fill:var(--g500)}
+  .btn svg{flex:none}
+  .btn-ghost{background:none;color:var(--g500);font-family:var(--sg);font-weight:500;font-size:14px;padding:8px 32px;width:100%}
+
+  /* PageIndicator: 6 segments, 200px wide */
+  .pi{display:flex;gap:6px;width:200px}
+  .pi i{flex:1;height:4px;border-radius:2px;background:hsla(0,0%,100%,.22)}
+  .pi i.f{background:var(--lime)}
+
+  .footer{display:flex;flex-direction:column;align-items:center;gap:16px}
+
+  /* Floating back (web affordance; the app uses the iOS back swipe) */
+  #backBtn{
+    position:fixed;top:calc(14px + env(safe-area-inset-top));left:14px;z-index:20;
+    width:32px;height:32px;border-radius:999px;display:none;align-items:center;justify-content:center;
+    background:rgba(20,20,20,.6);border:1px solid var(--glass);color:var(--g400);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  }
+  #backBtn.show{display:flex}
+
+  /* ============ 1 · HOOK ============ */
+  #s-hook{justify-content:space-between}
+  .mq-wrap{
+    position:absolute;top:10%;bottom:36%;left:-40px;right:-40px;z-index:0;
+    display:flex;flex-direction:column;justify-content:center;gap:10px;
+    transform:rotate(-3deg);pointer-events:none;
+  }
+  .on .mq-wrap{opacity:0;animation:aIn .9s ease forwards}
+  @keyframes aIn{to{opacity:1}}
+  .mq-row{overflow:visible;width:100%}
+  .mq-track{display:flex;gap:10px;width:max-content;animation:mq linear infinite}
+  .mq-track.rev{animation-direction:reverse}
+  @keyframes mq{from{transform:translateX(0)}to{transform:translateX(calc(-1 * var(--loop)))}}
+  .mq-card{
+    width:var(--cardw);border-radius:10px;border:1px solid var(--glass);
+    padding:8px;overflow:hidden;position:relative;flex:none;
+  }
+  .mq-in{display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1}
+  .mq-left{display:flex;align-items:center;gap:8px;min-width:0}
+  .mq-pfp{width:56px;height:56px;border-radius:8px;border:1px solid var(--glass-br);flex:none;background-size:cover;background-position:center}
+  .mq-pfp.mlb{background-size:contain;background-repeat:no-repeat;background-position:center bottom;background-origin:content-box;padding:3px}
+  .mq-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .mq-name{font-family:var(--sg);font-weight:500;font-size:18px;line-height:20px;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mq-sub{font-family:var(--sg);font-weight:300;font-size:12px;line-height:16px;color:var(--white);white-space:nowrap}
+  .mq-stat{font-family:var(--sg);font-weight:500;font-size:12px;line-height:16px;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mq-right{display:flex;align-items:center;gap:4px;flex:none}
+  .gwc{width:68px;display:flex;flex-direction:column;align-items:center}
+  .gwc b{font-family:var(--anton);font-weight:400;font-size:24px;line-height:28px;letter-spacing:.5px}
+  .gwc i{font-family:var(--sg);font-weight:700;font-style:normal;font-size:9px;line-height:10px;letter-spacing:.6px;margin-top:-3px;text-transform:uppercase}
+  .mq-wm{position:absolute;right:48px;top:50%;transform:translateY(-50%);width:128px;height:128px;opacity:.2;z-index:0;object-fit:contain}
+  .vig-top,.vig-bot{position:absolute;left:0;right:0;pointer-events:none;z-index:1}
+  .vig-top{top:0;height:22%;background:linear-gradient(to bottom, var(--bg), rgba(10,10,10,0))}
+  .vig-bot{bottom:0;height:50%;background:linear-gradient(to bottom, rgba(10,10,10,0) 0%, var(--bg) 45%, var(--bg) 100%)}
+  .hook-top{position:relative;z-index:2;display:flex;justify-content:center;padding-top:calc(20px + env(safe-area-inset-top))}
+  .hook-top img{width:120px;height:30px;object-fit:contain}
+  .hook-bottom{position:relative;z-index:2;padding-bottom:calc(40px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:16px}
+  .hook-title{display:flex;flex-direction:column;gap:2px}
+  .hook-title h1{font-family:var(--mont);font-weight:900;font-size:40px;line-height:46px;color:var(--white);white-space:nowrap}
+  .hook-title h1.lm{color:var(--lime)}
+  .hook-body{font-size:15px;line-height:21px;color:var(--g400)}
+  #hookCta{padding-top:18px;padding-bottom:18px;margin-top:4px}
+
+  /* ============ 2 · SPORTS ============ */
+  .screen-col{flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:16px;padding-top:calc(28px + env(safe-area-inset-top));padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+  .head-block{display:flex;flex-direction:column;gap:16px}
+  .grid-wrap{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .lg-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .lg-card{
+    position:relative;border-radius:10px;border:1.5px solid var(--glass);background:var(--surface);
+    height:168px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;
+    padding:16px;text-align:left;transition:transform .15s cubic-bezier(.3,.8,.4,1), background .15s, border-color .15s;
+  }
+  .lg-card:active{transform:scale(.96)}
+  .lg-card.sel{background:var(--lime-dim);border-color:var(--lime)}
+  .lg-well{
+    width:56px;height:56px;border-radius:8px;background:var(--bg);border:1px solid var(--glass);
+    margin-bottom:auto;display:flex;align-items:center;justify-content:center;
+  }
+  .lg-well img{opacity:.85;object-fit:contain}
+  .lg-card.sel .lg-well img{opacity:1}
+  .lg-name{font-family:var(--anton);font-weight:400;font-size:30px;line-height:38px;letter-spacing:.5px;text-transform:uppercase;color:var(--white)}
+  .lg-card.sel .lg-name{color:var(--lime)}
+  .lg-cap{font-size:12px;line-height:12px;color:var(--g500)}
+  .lg-badge{position:absolute;top:12px;right:12px;display:none;animation:aDn .2s ease forwards}
+  .lg-card.sel .lg-badge{display:block}
+
+  /* ============ 3 · ALERTS ============ */
+  .notif-block{display:flex;flex-direction:column;gap:10px;flex:1;justify-content:center}
+  .notif{position:relative}
+  .notif-card{
+    position:relative;z-index:3;background:var(--raised);border:1px solid var(--glass-br);
+    border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;
+  }
+  .notif-hd{display:flex;align-items:center;gap:8px}
+  .notif-bell{width:26px;height:26px;border-radius:7px;background:var(--lime);display:flex;align-items:center;justify-content:center;flex:none}
+  .notif-app{font-size:12px;line-height:12px;color:var(--g400);letter-spacing:.4px;flex:1}
+  .notif-now{font-size:12px;line-height:12px;color:var(--g600)}
+  .notif-title{font-family:var(--sg);font-weight:500;font-size:18px;line-height:20px;color:var(--white)}
+  .notif-body{font-size:14px;line-height:18px;color:var(--g400)}
+  .notif-l2{height:8px;margin:-1px 12px 0;border:1px solid var(--glass);border-top:0;border-radius:0 0 10px 10px;background:var(--raised);opacity:.65;position:relative;z-index:2}
+  .notif-l3{height:8px;margin:-1px 26px 0;border:1px solid var(--glass);border-top:0;border-radius:0 0 10px 10px;background:var(--raised);opacity:.35;position:relative;z-index:1}
+  .notif-fine{font-size:12px;line-height:12px;color:var(--g600);text-align:center;margin-top:10px}
+  .footer-alerts{display:flex;flex-direction:column;align-items:center;gap:12px}
+
+  /* ============ 4 · DEMO (BetDetails) ============ */
+  #s-demo{overflow:visible}
+  .demo-head{padding-top:calc(28px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:16px}
+  .bd{margin-top:12px;padding:0 16px calc(140px + env(safe-area-inset-bottom))}
+  .bd-hero{background-size:cover;background-position:center;padding-top:24px}
+  .bd-ring{position:relative;width:100%;display:flex;flex-direction:column;align-items:center}
+  .bd-ring svg{transform:rotate(135deg)}
+  .bd-ring .arc{transition:stroke-dashoffset 1.5s cubic-bezier(.87,0,.13,1)}
+  .bd-pfp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  .bd-pfp i{width:83px;height:64px;border-radius:1000px;background-size:cover;background-position:center;display:block}
+  .bd-pfp i.mlb{background-size:contain;background-repeat:no-repeat;background-position:center}
+  .bd-score{position:absolute;bottom:0;left:0;right:0;text-align:center;color:#707070;font-family:var(--sg);font-size:14px;margin-bottom:4px}
+  .bd-score b{font-family:var(--anton);font-weight:400;font-size:20px}
+  .bd-id{display:flex;flex-direction:column;gap:8px;align-items:center;padding-bottom:16px}
+  .bd-name{font-family:var(--sg);font-weight:500;font-size:20px;line-height:24px;color:var(--white)}
+  .bd-pos{font-size:14px;line-height:18px;color:var(--white)}
+  .card{border:1px solid var(--glass);border-radius:10px;background:var(--surface);overflow:hidden;padding:16px;width:100%}
+  .bd-stack{display:flex;flex-direction:column;gap:16px;margin-top:16px}
+  .on .bd-stack{opacity:0;animation:aUp .4s cubic-bezier(.25,.46,.45,.94) .12s forwards}
+  .ticket{display:flex;align-items:center;gap:12px;padding:14px}
+  .ticket-dir{width:46px;height:46px;border-radius:8px;background:var(--win-tint);border:1px solid var(--win-border);display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none}
+  .ticket-dir svg+svg{margin-top:-8px}
+  .ticket-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+  .ticket-line{font-family:var(--sg);font-weight:700;font-size:17px;line-height:22px;color:var(--white);white-space:nowrap}
+  .ticket-sub{font-size:12.5px;line-height:16px;color:var(--g500);white-space:nowrap}
+  .ticket-odds{background:var(--raised);border:1px solid var(--glass-br);border-radius:8px;padding:6px 10px;font-family:var(--sg);font-weight:700;font-size:15px;color:var(--white);flex:none}
+  .sec-hd{display:flex;align-items:center;justify-content:space-between}
+  .sec-title{font-family:var(--anton);font-weight:400;font-size:17px;line-height:22px;letter-spacing:.5px;text-transform:uppercase;color:var(--white)}
+  .card-gap{display:flex;flex-direction:column;gap:16px}
+  .bd-p{font-size:14px;line-height:18px;color:var(--white)}
+  /* Graph carousel */
+  .gc{overflow-x:auto;scroll-snap-type:x mandatory;display:flex;gap:16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px}
+  .gc::-webkit-scrollbar{display:none}
+  .gc-slide{flex:none;width:100%;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .gc-title{font-family:var(--sg);font-weight:500;font-size:20px;line-height:24px;color:var(--white)}
+  .graph{position:relative;width:100%;height:250px;display:flex;align-items:flex-start;padding-left:26px}
+  .graph-y{position:absolute;left:0;top:0;bottom:20px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;width:20px}
+  .graph-y span{font-family:var(--sg);font-size:10px;color:var(--white);line-height:1}
+  .graph-ref{position:absolute;left:26px;right:0;border-top:3px dashed #aaa;z-index:0}
+  .graph-bars{display:flex;align-items:flex-end;gap:8px;width:100%;height:calc(100% - 20px);position:relative;z-index:1}
+  .gbar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative}
+  .gbar i{width:100%;border-radius:2px 2px 0 0;display:block}
+  .gbar b{font-size:10px;font-weight:700;color:var(--white);font-family:var(--sg);margin-bottom:2px}
+  .gbar span{position:absolute;top:100%;margin-top:4px;font-size:8px;font-weight:700;color:var(--white);font-family:var(--sg);white-space:nowrap}
+  .gc-dots{display:flex;gap:5px;justify-content:center;margin:26px 0 10px}
+  .gc-dots i{width:8px;height:8px;border-radius:50%;background:#262626}
+  .gc-dots i.on{background:#f1f1f1}
+  .insight{display:flex;gap:24px;padding:16px 14px;background:var(--g900);border:1px solid var(--glass);border-radius:10px;align-items:flex-start}
+  .insight-ic{width:50px;height:50px;display:flex;align-items:center;justify-content:center;flex:none}
+  .insight p{font-size:14px;line-height:18px;color:var(--white);align-self:center}
+  .demo-cta{
+    position:fixed;bottom:0;left:0;right:0;z-index:10;display:none;
+    padding:60px 28px calc(32px + env(safe-area-inset-bottom));
+    background:linear-gradient(to bottom, rgba(10,10,10,0), var(--bg) 55%);
+  }
+  .demo-cta .in{max-width:374px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .demo-cta.show{display:block}
+
+  /* ============ 5 · PROOF ============ */
+  .proof-chart-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px}
+  .proof-chart{position:relative;width:100%;min-height:192px;max-height:256px;flex-grow:1;display:flex;justify-content:space-evenly;align-items:flex-end}
+  .pline{position:absolute;left:0;right:0;height:0;border-top:2px dotted #3D3D3D}
+  .pcol{display:flex;flex-direction:column;align-items:center;gap:6px;width:var(--pbw);position:relative;z-index:1}
+  .pcol b{font-size:11px;font-weight:700;color:var(--white);font-family:var(--mont)}
+  .pcol i{width:100%;border-radius:5px;display:block;height:0}
+  .on .pcol i{transition:height .8s cubic-bezier(.25,.46,.45,.94)}
+  .on .pcol:last-child i{transition-duration:.9s}
+  .pcol span{font-size:10px;color:var(--g400);font-family:var(--mont);white-space:nowrap}
+  .proof-stat{display:flex;flex-direction:column;gap:4px;text-align:center}
+  .proof-stat h3{font-family:var(--mont);font-weight:500;font-size:16px;line-height:22px;color:var(--white)}
+  .proof-stat h3 .ac{color:var(--lime)}
+  .proof-src{font-size:12px;line-height:16px;color:var(--g600)}
+
+  /* ============ 6 · RESULT ============ */
+  .sheet{display:flex;flex-direction:column;gap:10px;flex:1;justify-content:center}
+  .masthead{display:flex;flex-direction:column;gap:8px}
+  .masthead-row{display:flex;justify-content:space-between;align-items:center;padding:0 2px}
+  .ovl{font-family:var(--sg);font-weight:700;font-size:11px;line-height:14px;letter-spacing:1.2px;text-transform:uppercase}
+  .masthead-row .l{color:var(--g400)}
+  .masthead-row .r{color:var(--lime)}
+  .masthead-rule{height:1px;background:var(--glass-br)}
+  .lp-card{position:relative;overflow:hidden;border:1px solid var(--glass);border-radius:10px;padding:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .lp-left{display:flex;align-items:center;gap:10px;min-width:0;position:relative;z-index:1}
+  .lp-pfp{width:52px;height:52px;border-radius:8px;border:1px solid var(--glass-br);flex:none;background-size:cover;background-position:center}
+  .lp-pfp.mlb{background-size:contain;background-repeat:no-repeat;background-position:center bottom;background-origin:content-box;padding:3px}
+  .lp-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .lp-name{font-family:var(--sg);font-weight:500;font-size:18px;line-height:20px;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lp-sub{font-family:var(--sg);font-weight:300;font-size:12px;line-height:16px;color:var(--white);white-space:nowrap}
+  .lp-lock{display:flex;align-items:center;gap:4px}
+  .lp-lock span{font-family:var(--sg);font-weight:500;font-size:12px;line-height:16px;color:var(--g500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lp-grade{position:relative;z-index:1}
+  .lp-wm{position:absolute;right:48px;top:50%;transform:translateY(-50%);width:128px;height:128px;opacity:.2;z-index:0;object-fit:contain}
+  .sheet-note{font-size:12px;line-height:16px;color:var(--g600);text-align:center}
+  .rvl{opacity:0}
+  .on .rvl{animation:aDn .5s cubic-bezier(.25,.46,.45,.94) forwards}
+  .on .rvl-note{opacity:0;animation:aUp .4s ease 1.1s forwards}
+
+  /* ============ 7 · PAYWALL ============ */
+  .plan{border:1px solid rgba(208,255,20,.4);border-radius:10px;padding:20px;background:radial-gradient(140% 180% at 10% 0%, rgba(208,255,20,.09), transparent 50%), var(--surface);position:relative;overflow:hidden}
+  .plan .flag{position:absolute;top:0;right:0;background:var(--lime);color:#000;font-family:var(--sg);font-size:10px;font-weight:700;letter-spacing:.08em;padding:5px 12px;border-radius:0 0 0 10px}
+  .plan .pl-title{font-family:var(--anton);font-weight:400;font-size:24px;letter-spacing:.5px;text-transform:uppercase}
+  .plan .pl-price{font-size:13.5px;color:var(--g400);font-weight:500;margin-top:5px}
+  .plan .pl-price b{color:var(--white)}
+  .feats{list-style:none;margin-top:16px;display:flex;flex-direction:column;gap:10px}
+  .feats li{display:flex;gap:10px;font-size:13.5px;line-height:1.45;color:var(--g400);font-weight:500;align-items:flex-start}
+  .feats li::before{content:"";flex:none;width:16px;height:16px;margin-top:1px;border-radius:50%;background:var(--lime-dim);border:1px solid rgba(208,255,20,.5);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.6 2.6L12 5.5' fill='none' stroke='%23D0FF14' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-size:10px;background-position:center;background-repeat:no-repeat}
+  .btn-store-ghost{
+    display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    border:1px solid var(--glass);border-radius:999px;padding:14px 20px;margin-top:10px;
+    font-family:var(--sg);font-weight:500;font-size:14px;color:var(--white);text-decoration:none;
+  }
+  .fine{font-size:11px;color:var(--g600);text-align:center;margin-top:12px;line-height:1.55}
+
+  @media (prefers-reduced-motion: reduce){
+    .mq-track{animation-duration:0s!important;animation-iteration-count:1!important}
+    .a-dn,.a-up,.rvl,.bd-stack{animation-duration:0s!important;animation-delay:0s!important}
+    #splash{display:none}
+    .bd-ring .arc,.pcol i{transition:none!important}
+  }
+</style>
+<script>
+  /* ---- PostHog (same project as the app) ---- */
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])}(document,window.posthog||[]);
+  posthog.init("phc_OwIViiir6xO5CSomsQgJxCjAuyE4AR6c2tvUyYXoy8v",{api_host:"https://us.i.posthog.com",autocapture:false,capture_pageview:false});
+</script>
+</head>
+<body>
+
+<div id="splash" aria-hidden="true"><img data-asset="wordmark" alt=""></div>
+<button id="backBtn" aria-label="Back"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+
+<div class="shell" id="shell">
+
+  <!-- ============ 1 · HOOK ============ -->
+  <section class="step" id="s-hook" data-step="hook">
+    <div class="mq-wrap" id="mqWrap"></div>
+    <div class="vig-top"></div>
+    <div class="vig-bot"></div>
+    <div class="hook-top a-dn"><img data-asset="wordmark" alt="PropGPT"></div>
+    <div class="hook-bottom pad a-up d250" style="animation-duration:.7s">
+      <div class="hook-title">
+        <h1 class="fit">EVERY PICK</h1>
+        <h1 class="lm fit">EARNS ITS GRADE</h1>
+      </div>
+      <p class="hook-body">Tonight's props across the NBA, NFL, MLB and WNBA, graded A+ to F, with the evidence behind every call.</p>
+      <button class="btn" id="hookCta">Show me tonight's picks</button>
+    </div>
+  </section>
+
+  <!-- ============ 2 · SPORTS ============ -->
+  <section class="step" data-step="sports">
+    <div class="screen-col pad">
+      <div class="head-block">
+        <div class="logo-row a-dn"><img data-asset="wordmark" alt="PropGPT"></div>
+        <div class="oh a-dn d150">
+          <div class="oh-title fit">YOUR SPORTS</div>
+          <div class="oh-sub fit">Your board starts <span class="ac">where you bet</span></div>
+          <p class="oh-body">Pick at least one. This shapes your feed, your alerts and your first sheet.</p>
+        </div>
+      </div>
+      <div class="grid-wrap a-up d300">
+        <div class="lg-grid" id="lgGrid">
+          <button class="lg-card" data-lg="NFL">
+            <span class="lg-well"><img data-asset="league_nfl" style="width:36px;height:36px" alt=""></span>
+            <span class="lg-name">NFL</span>
+            <span class="lg-cap">Player props + team picks</span>
+            <span class="lg-badge"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><rect width="20" height="20" rx="10" fill="#D0FF14"/><path d="M6.123 10.289l2.6 2.6 5.777-5.778" stroke="hsl(0,0%,5%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+          </button>
+          <button class="lg-card" data-lg="NBA">
+            <span class="lg-well"><img data-asset="league_nba" style="width:48px;height:48px" alt=""></span>
+            <span class="lg-name">NBA</span>
+            <span class="lg-cap">Player props + game picks</span>
+            <span class="lg-badge"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><rect width="20" height="20" rx="10" fill="#D0FF14"/><path d="M6.123 10.289l2.6 2.6 5.777-5.778" stroke="hsl(0,0%,5%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+          </button>
+          <button class="lg-card" data-lg="MLB">
+            <span class="lg-well"><img data-asset="league_mlb" style="width:48px;height:48px" alt=""></span>
+            <span class="lg-name">MLB</span>
+            <span class="lg-cap">Props for every slate</span>
+            <span class="lg-badge"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><rect width="20" height="20" rx="10" fill="#D0FF14"/><path d="M6.123 10.289l2.6 2.6 5.777-5.778" stroke="hsl(0,0%,5%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+          </button>
+          <button class="lg-card" data-lg="WNBA">
+            <span class="lg-well"><img data-asset="league_wnba" style="width:34px;height:34px" alt=""></span>
+            <span class="lg-name">WNBA</span>
+            <span class="lg-cap">Props, every game day</span>
+            <span class="lg-badge"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><rect width="20" height="20" rx="10" fill="#D0FF14"/><path d="M6.123 10.289l2.6 2.6 5.777-5.778" stroke="hsl(0,0%,5%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+          </button>
+        </div>
+      </div>
+      <div class="footer">
+        <button class="btn" id="sportsCta" disabled><span id="sportsCtaLabel">Pick at least one</span><svg width="20" height="20" viewBox="0 0 20 21" fill="none"><path fill="#000" d="M13.476 11.333H3.333V9.666h10.143l-4.47-4.47 1.179-1.178 6.482 6.482-6.482 6.481-1.179-1.178 4.47-4.47Z"/></svg></button>
+        <div class="pi" data-pi="2"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3 · ALERTS ============ -->
+  <section class="step" data-step="alerts">
+    <div class="screen-col pad">
+      <div class="head-block">
+        <div class="logo-row a-dn"><img data-asset="wordmark" alt="PropGPT"></div>
+        <div class="oh a-dn d150">
+          <div class="oh-title fit">FIRST TO KNOW</div>
+          <div class="oh-sub fit">Picks land <span class="ac">before lineups lock</span></div>
+          <p class="oh-body" id="alertsBody">One alert a day when the NBA sheet is graded. No streaks, no spam.</p>
+        </div>
+      </div>
+      <div class="notif-block a-up d300">
+        <div class="notif">
+          <div class="notif-card">
+            <div class="notif-hd">
+              <span class="notif-bell"><svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path fill="#000" d="M20 17h2v2H2v-2h2v-7a8 8 0 1 1 16 0v7Zm-2 0v-7a6 6 0 0 0-12 0v7h12Zm-9 4h6v2H9v-2Z"/></svg></span>
+              <span class="notif-app">PROPGPT</span>
+              <span class="notif-now">now</span>
+            </div>
+            <div>
+              <div class="notif-title" id="alertsPreviewTitle">Tonight's NBA sheet is graded</div>
+              <div class="notif-body">3 picks rated A or better. Tap to see the calls.</div>
+            </div>
+          </div>
+          <div class="notif-l2"></div>
+          <div class="notif-l3"></div>
+        </div>
+        <div class="notif-fine">You can switch alerts off anytime.</div>
+      </div>
+      <div class="footer-alerts">
+        <button class="btn" id="alertsCta">Turn on pick alerts<svg width="20" height="20" viewBox="0 0 20 21" fill="none"><path fill="#000" d="M13.476 11.333H3.333V9.666h10.143l-4.47-4.47 1.179-1.178 6.482 6.482-6.482 6.481-1.179-1.178 4.47-4.47Z"/></svg></button>
+        <button class="btn-ghost" id="alertsSkip">Maybe later</button>
+        <div class="pi" data-pi="3"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 4 · DEMO ============ -->
+  <section class="step" data-step="demo">
+    <div class="demo-head pad">
+      <div class="logo-row a-dn" style="animation-delay:.1s"><img data-asset="wordmark" alt="PropGPT"></div>
+      <div class="oh a-dn d300">
+        <div class="oh-title fit">THE BREAKDOWN</div>
+        <div class="oh-sub fit" id="demoSub">Every NFL pick shows <span class="ac">its work</span></div>
+      </div>
+    </div>
+    <div class="bd a-up d500" style="animation-duration:.8s" id="bdRoot"></div>
+  </section>
+  <div class="demo-cta" id="demoCta">
+    <div class="in">
+      <button class="btn a-up d700" id="demoNext">Next<svg width="20" height="20" viewBox="0 0 20 21" fill="none"><path fill="#000" d="M13.476 11.333H3.333V9.666h10.143l-4.47-4.47 1.179-1.178 6.482 6.482-6.482 6.481-1.179-1.178 4.47-4.47Z"/></svg></button>
+      <div class="pi a-up d900" data-pi="4"></div>
+    </div>
+  </div>
+
+  <!-- ============ 5 · PROOF ============ -->
+  <section class="step" data-step="proof">
+    <div class="screen-col pad">
+      <div class="head-block">
+        <div class="logo-row a-dn"><img data-asset="wordmark" alt="PropGPT"></div>
+        <div class="oh a-dn d150">
+          <div class="oh-title fit">THE RECORD</div>
+          <div class="oh-sub fit">Graded picks. <span class="ac">Kept results.</span></div>
+          <p class="oh-body">PropGPT hit 67.5% of graded props last season. The average bettor hits about 45%.</p>
+        </div>
+      </div>
+      <div class="proof-chart-wrap">
+        <div class="proof-chart" id="proofChart">
+          <div class="pcol" data-v="45.45" data-c="#FA5B49"><b>45.45%</b><i></i><span>Human Avg</span></div>
+          <div class="pcol" data-v="51.5" data-c="#FBA002"><b>51.5%</b><i></i><span>Expert Avg</span></div>
+          <div class="pcol" data-v="67.5" data-c="#D0FF14"><b>67.5%</b><i></i><span>PropGPT</span></div>
+        </div>
+        <div class="proof-stat a-up d600">
+          <h3><span class="ac">48% more accurate</span> than the average bettor</h3>
+          <p class="proof-src">Across 116,000+ graded picks through the 2025–26 seasons. Losses stay on the record.</p>
+        </div>
+      </div>
+      <div class="footer">
+        <button class="btn" id="proofCta">Build my sheet<svg width="20" height="20" viewBox="0 0 20 21" fill="none"><path fill="#000" d="M13.476 11.333H3.333V9.666h10.143l-4.47-4.47 1.179-1.178 6.482 6.482-6.482 6.481-1.179-1.178 4.47-4.47Z"/></svg></button>
+        <div class="pi" data-pi="5"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6 · RESULT ============ -->
+  <section class="step" data-step="result">
+    <div class="screen-col pad">
+      <div class="head-block">
+        <div class="logo-row a-dn"><img data-asset="wordmark" alt="PropGPT"></div>
+        <div class="oh a-dn d150">
+          <div class="oh-title fit">YOUR SHEET</div>
+          <div class="oh-sub fit" id="resultSub">Built for <span class="ac" id="resultLeagues"></span></div>
+          <p class="oh-body">Tonight's board, graded. The top of your sheet:</p>
+        </div>
+      </div>
+      <div class="sheet">
+        <div class="masthead rvl" style="animation-delay:.25s;animation-duration:.4s">
+          <div class="masthead-row"><span class="ovl l">Sample sheet</span><span class="ovl r" id="mastheadN">3 picks</span></div>
+          <div class="masthead-rule"></div>
+        </div>
+        <div id="sheetCards" style="display:flex;flex-direction:column;gap:10px"></div>
+        <div class="sheet-note rvl-note">Sample picks shown. Your live board loads once you're in.</div>
+      </div>
+      <div class="footer">
+        <button class="btn" id="resultCta">Unlock my sheet<svg width="20" height="20" viewBox="0 0 20 21" fill="none"><path fill="#000" d="M13.476 11.333H3.333V9.666h10.143l-4.47-4.47 1.179-1.178 6.482 6.482-6.482 6.481-1.179-1.178 4.47-4.47Z"/></svg></button>
+        <div class="pi" data-pi="6"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7 · PAYWALL ============ -->
+  <section class="step" data-step="paywall">
+    <div class="screen-col pad">
+      <div class="head-block">
+        <div class="logo-row a-dn"><img data-asset="wordmark" alt="PropGPT"></div>
+        <div class="oh a-dn d150">
+          <div class="oh-title fit" id="pwTitle">YOUR SHEET IS READY</div>
+          <div class="oh-sub fit" id="pwSub">Every graded pick, <span class="ac">free for 7 days</span></div>
+          <p class="oh-body">Start PropGPT Pro on the App Store — your picks, alerts and sheet carry over.</p>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center" class="a-up d300">
+        <div class="plan">
+          <span class="flag">7-DAY FREE TRIAL</span>
+          <div class="pl-title">PropGPT Pro</div>
+          <div class="pl-price"><b>$0 today</b> · then $9.99/week · cancel anytime</div>
+          <ul class="feats">
+            <li>Every graded pick, every league, every day</li>
+            <li>Full "why this pick" breakdowns and last-10 trends</li>
+            <li>Parlay grading with weak-leg detection</li>
+            <li>Injury-aware live re-grades</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer" style="gap:0">
+        <a class="btn" id="iosCta" href="https://apps.apple.com/us/app/propgpt-ai-sports-picks/id6645884227" rel="noopener">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 12.54c-.03-2.66 2.17-3.94 2.27-4-1.24-1.81-3.17-2.06-3.85-2.09-1.63-.17-3.2.96-4.03.96-.84 0-2.12-.94-3.49-.91-1.79.03-3.45 1.04-4.37 2.65-1.87 3.24-.48 8.03 1.34 10.66.89 1.29 1.95 2.73 3.34 2.68 1.34-.05 1.85-.87 3.47-.87 1.61 0 2.08.87 3.49.84 1.44-.03 2.36-1.31 3.24-2.6 1.02-1.49 1.44-2.94 1.46-3.01-.03-.02-2.8-1.08-2.87-4.31zM14.4 4.72c.74-.9 1.24-2.14 1.1-3.38-1.07.04-2.36.71-3.12 1.6-.69.79-1.29 2.06-1.13 3.27 1.19.09 2.41-.6 3.15-1.49z"/></svg>
+          Start free trial
+        </a>
+        <a class="btn-store-ghost" id="playCta" href="https://play.google.com/store/apps/details?id=net.orangutech.bestbet" rel="noopener">Get it on Google Play</a>
+        <p class="fine">Subscription billed securely by the App Store — no card entered on the web. Auto-renews after trial; cancel anytime in your store settings. PropGPT is analysis, not a sportsbook. 21+ · If gambling is a problem, call 1-800-GAMBLER.</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<noscript><div style="padding:24px;text-align:center;font-family:sans-serif"><a href="https://apps.apple.com/us/app/propgpt-ai-sports-picks/id6645884227" style="color:#D0FF14">Download PropGPT on the App Store →</a></div></noscript>
+
+<script>
+/* ======== Embedded assets & data (generated — do not edit by hand) ======== */
+/*__FUNNEL_ASSETS__*/
+var ASSETS = "__ASSETS_JSON__";
+var DATA = "__DATA_JSON__";
+/*__END_FUNNEL_ASSETS__*/
+</script>
+<script>
+(function(){
+  "use strict";
+  var ph = window.posthog;
+  function track(ev, props){ try{ ph && ph.capture(ev, props||{}); }catch(e){} }
+
+  /* ---- Attribution capture (MoonGate-style param family) ---- */
+  var KEYS = ["utm_source","utm_medium","utm_campaign","campaign_name","campaign_id","adset_name","adset_id","ad_name","ad_id","fbclid","ios_pp_id","fpid","fsid","gclid","ttclid"];
+  var qs = new URLSearchParams(location.search);
+  var attr = {};
+  KEYS.forEach(function(k){ var v = qs.get(k); if(v) attr[k]=v; });
+  try{
+    var saved = JSON.parse(localStorage.getItem("pg_attr")||"{}");
+    attr = Object.assign({}, saved, attr);                 // fresh params win
+    localStorage.setItem("pg_attr", JSON.stringify(attr));
+  }catch(e){}
+  try{ ph && ph.register(Object.keys(attr).length ? attr : {utm_source:"direct"}); }catch(e){}
+
+  /* ---- Shared helpers, ported 1:1 from the app ---- */
+  function colorForGrade(g){ return g>=90?"#1DCE86":g>=80?"#73C3E5":g>=70?"#ECDF67":g>=60?"#E5A500":"#FF6257"; }
+  function letterForGrade(g){
+    return g>=97?"A+":g>=93?"A":g>=90?"A-":g>=87?"B+":g>=83?"B":g>=80?"B-":g>=77?"C+":g>=73?"C":g>=70?"C-":g>=67?"D+":g>=63?"D":g>=60?"D-":"F";
+  }
+  function decimalToAmerican(dec){
+    if(!dec || dec<=1) return null;
+    return dec>=2 ? "+"+Math.round((dec-1)*100) : "-"+Math.round(100/(dec-1));
+  }
+  var SHORTS = {"points":"Pts","rebounds":"Rebs","assists":"Asts","steals":"Stls","blocks":"Blks","threes":"3PT","turnovers":"TOs"};
+  function shortStat(stat){
+    return stat.split(" + ").map(function(s){ return SHORTS[s.toLowerCase()] || s; }).join("+");
+  }
+  var SAVE_SVG = '<svg width="28" height="28" viewBox="0 0 28 29" fill="none"><path stroke="#fff" stroke-width="2" d="M7 5v18.064l7-4.215 7 4.215V5H7Z"/></svg>';
+  function gradeWithConf(g){
+    var c = colorForGrade(g);
+    return '<span class="gwc"><b style="color:'+c+'">'+letterForGrade(g)+'</b><i style="color:'+c+'">'+Math.round(g)+'%</i></span>';
+  }
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+
+  /* ---- Asset hydration ---- */
+  document.querySelectorAll("[data-asset]").forEach(function(el){
+    var v = ASSETS[el.dataset.asset];
+    if(!v) return;
+    if(el.tagName === "IMG") el.src = v; else el.style.backgroundImage = 'url("'+v+'")';
+  });
+
+  /* ---- fit-to-width single lines (adjustsFontSizeToFit) ---- */
+  function fitAll(root){
+    (root||document).querySelectorAll(".fit").forEach(function(el){
+      el.style.fontSize = "";
+      var base = parseFloat(getComputedStyle(el).fontSize);
+      var guard = 0;
+      while(el.scrollWidth > el.clientWidth + 1 && base > 11 && guard++ < 40){
+        base -= 1; el.style.fontSize = base + "px";
+      }
+    });
+  }
+
+  /* ---- Marquee board (hook.tsx) ---- */
+  function buildMarquee(){
+    var wrap = document.getElementById("mqWrap");
+    var shellW = document.getElementById("shell").clientWidth;
+    var cardw = Math.round(shellW * 0.8);
+    var speeds = {1:30, 2:22, 3:36, 4:26};
+    var html = "";
+    for(var r=1; r<=4; r++){
+      var bets = DATA.marquee.filter(function(b){ return b.row===r; });
+      var loop = bets.length * (cardw + 10);
+      var dur = Math.round(loop / speeds[r]);
+      var cards = bets.concat(bets).map(function(b){
+        var wm = b.logo && ASSETS[b.logo] ? '<img class="mq-wm" src="'+ASSETS[b.logo]+'" alt="">' : "";
+        return '<div class="mq-card" style="background:'+b.bg+'">'+wm+
+          '<div class="mq-in"><div class="mq-left">'+
+          '<span class="mq-pfp'+(b.league==="MLB"?" mlb":"")+'" style="background-color:'+b.fg+';background-image:url(\''+ASSETS[b.img]+'\')"></span>'+
+          '<span class="mq-txt"><span class="mq-name">'+esc(b.name)+'</span>'+
+          '<span class="mq-sub">vs. '+b.opp+' x'+b.price+'</span>'+
+          '<span class="mq-stat">'+(b.ou==="under"?"UNDER":"OVER")+' '+b.line+' '+esc(b.stat)+'</span></span></div>'+
+          '<div class="mq-right">'+gradeWithConf(b.grade)+SAVE_SVG+'</div></div></div>';
+      }).join("");
+      html += '<div class="mq-row"><div class="mq-track'+(r===2||r===4?" rev":"")+'" style="--loop:'+loop+'px;animation-duration:'+dur+'s">'+cards+'</div></div>';
+    }
+    wrap.style.setProperty("--cardw", cardw+"px");
+    wrap.innerHTML = html;
+  }
+
+  /* ---- Demo screen (BetDetails replica) ---- */
+  var TICKET_ARROW = '<svg width="18" height="12" viewBox="0 0 8 5" fill="none"><path fill="#1DCE86" d="M3.917 2.01 1.195 4.73l-.778-.777 3.5-3.5 3.5 3.5-.778.777L3.917 2.01Z"/></svg>';
+  var IC_SPARKLES = '<svg width="20" height="20" viewBox="0 0 23 22" fill="none"><path fill="#757575" d="m16.667.208 1.318 2.473L20.458 4l-2.473 1.319-1.318 2.472-1.32-2.472-2.472-1.32 2.473-1.318L16.667.208Zm-9 3.125 2.666 5 5 2.667-5 2.666-2.666 5-2.667-5L0 11l5-2.667 2.667-5Zm11.666 12-1.666-3.125L16 15.333 12.875 17 16 18.666l1.667 3.125 1.666-3.125L22.458 17l-3.125-1.667Z"/></svg>';
+  var IC_BARCHART = '<svg width="20" height="20" viewBox="0 0 19 20" fill="none"><path fill="#757575" d="M.021 10.657h1.945v8.751H.021v-8.75Zm2.917 1.945h1.945v6.806H2.938v-6.806Zm10.695-5.834h1.945v12.64h-1.944V6.768Zm2.917 1.945h1.945v10.695H16.55V8.713ZM6.827.935h1.945v18.473H6.827V.935Zm2.917 1.944h1.945v16.529H9.744V2.879Z"/></svg>';
+  var IC_FIRE = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path fill="#fff" d="M5.926 20.574a7.26 7.26 0 0 0 3.039 1.511c.107.035.179-.105.107-.175-2.395-2.285-1.079-4.758-.107-5.873.693-.796 1.68-2.107 1.608-3.865 0-.176.18-.317.322-.211 1.359.703 2.288 2.25 2.538 3.515.394-.386.537-.984.537-1.511 0-.176.214-.317.393-.176 1.287 1.16 3.503 5.097-.072 8.19-.071.071 0 .212.072.177a8.761 8.761 0 0 0 3.003-1.442c5.827-4.5 2.037-12.48-.43-15.116-.321-.317-.893-.106-.893.351-.036.95-.322 2.004-1.072 2.707-.572-2.39-2.478-5.105-5.195-6.441-.357-.176-.786.105-.75.492.07 3.27-2.063 5.352-3.922 8.059-1.645 2.425-2.717 6.89.822 9.808z"/></svg>';
+  var IC_LOCK_W = '<svg width="28" height="34" viewBox="0 0 18 21" fill="none"><path fill="#fff" d="M15 7H17C17.5523 7 18 7.44772 18 8V20C18 20.5523 17.5523 21 17 21H1C0.44772 21 0 20.5523 0 20V8C0 7.44772 0.44772 7 1 7H3V6C3 2.68629 5.68629 0 9 0C12.3137 0 15 2.68629 15 6V7ZM8 14.7324V17H10V14.7324C10.5978 14.3866 11 13.7403 11 13C11 11.8954 10.1046 11 9 11C7.8954 11 7 11.8954 7 13C7 13.7403 7.4022 14.3866 8 14.7324ZM13 7V6C13 3.79086 11.2091 2 9 2C6.79086 2 5 3.79086 5 6V7H13Z"/></svg>';
+  var IC_BOLT = '<svg width="38" height="38" viewBox="0 0 16 16" fill="none"><path fill="#fff" d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/></svg>';
+  var IC_LOCK_SM = '<svg width="12" height="12" viewBox="0 0 18 21" fill="none" style="flex:none"><path fill="#9E9E9E" d="M15 7H17C17.5523 7 18 7.44772 18 8V20C18 20.5523 17.5523 21 17 21H1C0.44772 21 0 20.5523 0 20V8C0 7.44772 0.44772 7 1 7H3V6C3 2.68629 5.68629 0 9 0C12.3137 0 15 2.68629 15 6V7ZM8 14.7324V17H10V14.7324C10.5978 14.3866 11 13.7403 11 13C11 11.8954 10.1046 11 9 11C7.8954 11 7 11.8954 7 13C7 13.7403 7.4022 14.3866 8 14.7324ZM13 7V6C13 3.79086 11.2091 2 9 2C6.79086 2 5 3.79086 5 6V7H13Z"/></svg>';
+
+  function getBarColor(v, threshold){
+    if(!threshold) return "#1DCE86";
+    if(v >= threshold + 1) return "#1DCE86";
+    if(v >= threshold - 1.5) return "#E6C93A";
+    return "#FF6257";
+  }
+  function graphHTML(g){
+    var maxY = g.data.reduce(function(a,d){ return Math.max(a,d.v); }, 0);
+    var maxV = maxY + 1;
+    var sections = Math.min(maxV, 7);
+    var ticks = "";
+    for(var i=sections; i>=0; i--) ticks += "<span>"+Math.round(maxV*i/sections)+"</span>";
+    var ref = g.threshold ? '<div class="graph-ref" style="bottom:calc((100% - 20px) * '+(g.threshold/maxV)+' + 20px)"></div>' : "";
+    var bars = g.data.map(function(d){
+      var h = Math.max(0, d.v)/maxV*100;
+      return '<div class="gbar"><b>'+d.v+'</b><i style="height:'+h+'%;background:'+getBarColor(d.v, g.threshold)+'"></i><span>'+d.l+'</span></div>';
+    }).join("");
+    return '<div class="gc-slide"><div class="gc-title">'+esc(g.title)+'</div>'+
+      '<div class="graph"><div class="graph-y">'+ticks+'</div>'+ref+
+      '<div class="graph-bars">'+bars+'</div></div></div>';
+  }
+
+  function buildDemo(league){
+    var d = DATA.demo[league] || DATA.demo.NFL;
+    document.getElementById("demoSub").innerHTML = 'Every '+d.lg+' pick shows <span class="ac">its work</span>';
+    var pct = Math.max(5, d.grade/100*75);
+    var C = 2*Math.PI*58;
+    var slides = d.graphs.map(graphHTML).join("");
+    var dots = d.graphs.length>1 ? '<div class="gc-dots" id="gcDots">'+d.graphs.map(function(_,i){ return '<i'+(i===0?' class="on"':'')+'></i>'; }).join("")+'</div>' : '<div style="height:10px"></div>';
+    var insights = d.insights.map(function(txt,i){
+      var ic = i===0?IC_FIRE:i===1?IC_LOCK_W:IC_BOLT;
+      return '<div class="insight"><span class="insight-ic" style="background:'+colorForGrade(d.grade)+'">'+ic+'</span><p>'+esc(txt)+'</p></div>';
+    }).join("");
+    var mlb = d.lg==="MLB" ? " mlb" : "";
+    document.getElementById("bdRoot").innerHTML =
+      '<div class="bd-hero" style="background-image:url(\''+ASSETS.arrows90+'\')">'+
+        '<div class="bd-ring">'+
+          '<svg width="128" height="128"><circle cx="64" cy="64" r="58" fill="transparent" stroke="'+colorForGrade(d.grade)+'" stroke-width="12" stroke-linecap="round" class="arc" stroke-dasharray="'+C+'" stroke-dashoffset="'+C+'"/></svg>'+
+          '<div class="bd-pfp"><i class="'+mlb+'" style="background-image:url(\''+ASSETS["demo_"+d.lg.toLowerCase()]+'\')"></i></div>'+
+          '<div class="bd-score"><b style="color:'+colorForGrade(d.grade)+'">'+d.grade+'</b>/100</div>'+
+        '</div>'+
+        '<div class="bd-id"><div class="bd-name">'+esc(d.name)+'</div><div class="bd-pos">'+d.pos.toUpperCase()+' • '+esc(d.teamName)+'</div></div>'+
+      '</div>'+
+      '<div style="height:16px"></div>'+
+      '<div class="bd-stack">'+
+        '<div class="card ticket"><span class="ticket-dir">'+TICKET_ARROW+TICKET_ARROW+'</span>'+
+          '<span class="ticket-mid"><span class="ticket-line fit">OVER '+d.line+' '+shortStat(d.stat).toUpperCase()+'</span><span class="ticket-sub">vs. '+d.opp+'</span></span>'+
+          '<span class="ticket-odds">'+decimalToAmerican(d.price)+'</span></div>'+
+        '<div class="card card-gap"><div class="sec-hd"><span class="sec-title">Why This Pick</span>'+IC_SPARKLES+'</div><p class="bd-p">'+esc(d.long)+'</p></div>'+
+        '<div class="card card-gap"><div class="sec-hd"><span class="sec-title">Statistics</span>'+IC_BARCHART+'</div><div class="gc" id="gc">'+slides+'</div>'+dots+'</div>'+
+        '<div class="sec-title">Insights</div>'+insights+
+      '</div>';
+    // arc animation on next frame
+    var arc = document.querySelector("#bdRoot .arc");
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      arc.style.strokeDashoffset = (C - C*pct/100) + "";
+    });});
+    // carousel dots
+    var gc = document.getElementById("gc");
+    var gDots = document.getElementById("gcDots");
+    if(gc && gDots){
+      gc.addEventListener("scroll", function(){
+        var i = Math.round(gc.scrollLeft / gc.clientWidth);
+        Array.prototype.forEach.call(gDots.children, function(el,j){ el.classList.toggle("on", j===i); });
+      }, {passive:true});
+    }
+    fitAll(document.getElementById("bdRoot"));
+  }
+
+  /* ---- Result sheet (useSheet port over the mock pool) ---- */
+  function buildSheet(preferred){
+    var byGrade = function(a,b){ return b.grade - a.grade; };
+    var pool = DATA.marquee.slice().sort(byGrade);
+    var backup = pool.filter(function(b){ return b.grade>=90; });
+    var picked = [];
+    var take = function(b){ if(b && picked.indexOf(b)===-1) picked.push(b); };
+    if(preferred.length){
+      var queues = preferred.map(function(lg){
+        var q = pool.filter(function(b){ return b.league===lg; });
+        return q.length ? q : backup.filter(function(b){ return b.league===lg; });
+      });
+      var guard = 0;
+      while(picked.length<3 && queues.some(function(q){ return q.length; }) && guard++<20){
+        for(var i=0;i<queues.length;i++){ if(picked.length>=3) break; take(queues[i].shift()); }
+      }
+    }
+    for(var j=0;j<pool.length && picked.length<3;j++) take(pool[j]);
+    return picked;
+  }
+  function renderSheet(preferred){
+    var picks = buildSheet(preferred);
+    var lgs = [];
+    picks.forEach(function(b){ if(lgs.indexOf(b.league)===-1) lgs.push(b.league); });
+    // result.tsx: "Built for" only when every sheet league was picked, else "Tonight:"
+    var builtFor = lgs.every(function(l){ return preferred.indexOf(l)!==-1; });
+    document.getElementById("resultSub").innerHTML =
+      (builtFor ? "Built for " : "Tonight: ") + '<span class="ac" id="resultLeagues"></span>';
+    document.getElementById("resultLeagues").textContent = lgs.join(" · ");
+    document.getElementById("mastheadN").textContent = picks.length + " picks";
+    document.getElementById("sheetCards").innerHTML = picks.map(function(b,i){
+      var wm = b.logo && ASSETS[b.logo] ? '<img class="lp-wm" src="'+ASSETS[b.logo]+'" alt="">' : "";
+      return '<div class="lp-card rvl" style="background:'+b.bg+';animation-delay:'+(0.4+i*0.22)+'s">'+wm+
+        '<div class="lp-left">'+
+        '<span class="lp-pfp'+(b.league==="MLB"?" mlb":"")+'" style="background-color:'+b.fg+';background-image:url(\''+ASSETS[b.img]+'\')"></span>'+
+        '<span class="lp-txt"><span class="lp-name">'+esc(b.name)+'</span>'+
+        '<span class="lp-sub">'+b.league+' · vs. '+b.opp+'</span>'+
+        '<span class="lp-lock">'+IC_LOCK_SM+'<span>'+b.line+' '+esc(b.stat)+' · call locked</span></span></span></div>'+
+        '<span class="lp-grade">'+gradeWithConf(b.grade)+'</span></div>';
+    }).join("");
+  }
+
+  /* ---- Page indicators ---- */
+  document.querySelectorAll("[data-pi]").forEach(function(el){
+    var cur = parseInt(el.dataset.pi, 10);
+    var html = "";
+    for(var i=1;i<=6;i++) html += '<i'+(i<=cur?' class="f"':'')+'></i>';
+    el.innerHTML = html;
+  });
+
+  /* ---- Step machine ---- */
+  var steps = Array.prototype.slice.call(document.querySelectorAll(".step"));
+  var order = steps.map(function(s){ return s.dataset.step; });
+  var answers = { leagues: [] };
+  var idx = 0;
+  var backBtn = document.getElementById("backBtn");
+  var demoCta = document.getElementById("demoCta");
+  var demoBuiltFor = null;
+
+  function show(i, push){
+    idx = i;
+    steps.forEach(function(s,j){ s.classList.toggle("on", j===i); });
+    backBtn.classList.toggle("show", i>0);
+    demoCta.classList.toggle("show", order[i]==="demo");
+    window.scrollTo(0,0);
+    if(push!==false){ history.pushState({i:i},""); }
+    var name = order[i];
+    if(name==="alerts"){
+      var lg = answers.leagues[0] || "NBA";
+      document.getElementById("alertsBody").textContent = "One alert a day when the "+lg+" sheet is graded. No streaks, no spam.";
+      document.getElementById("alertsPreviewTitle").textContent = "Tonight's "+lg+" sheet is graded";
+    }
+    if(name==="demo"){
+      var dl = answers.leagues[0] || "NFL";
+      if(demoBuiltFor !== dl){ buildDemo(dl); demoBuiltFor = dl; }
+      else {
+        var arc = document.querySelector("#bdRoot .arc");
+        if(arc){ var C = 2*Math.PI*58; var d = DATA.demo[dl]||DATA.demo.NFL; var pct = Math.max(5, d.grade/100*75);
+          arc.style.transition="none"; arc.style.strokeDashoffset = C+"";
+          requestAnimationFrame(function(){ requestAnimationFrame(function(){ arc.style.transition=""; arc.style.strokeDashoffset = (C - C*pct/100)+""; });});
+        }
+      }
+    }
+    if(name==="proof") runProof();
+    if(name==="result"){ renderSheet(answers.leagues); }
+    if(name==="paywall"){
+      var l = answers.leagues;
+      document.getElementById("pwTitle").textContent = "YOUR " + (l.length===1 ? l[0]+" SHEET" : "SHEET") + " IS READY";
+      track("web_funnel_paywall_view", {answers: answers});
+    }
+    fitAll(steps[i]);
+    track("web_funnel_step", {step: name, step_index: i, answers: answers});
+  }
+  function next(){ if(idx<steps.length-1) show(idx+1); }
+
+  window.addEventListener("popstate", function(e){
+    var i = e.state && typeof e.state.i==="number" ? e.state.i : 0;
+    show(Math.min(i, steps.length-1), false);
+  });
+  backBtn.addEventListener("click", function(){ history.back(); });
+
+  /* Proof chart animation (replays on every arrival, like key={arrival}) */
+  function runProof(){
+    var chart = document.getElementById("proofChart");
+    var h = Math.min(256, Math.max(192, chart.clientHeight || 220));
+    var scale = (h - 64) / 67.5;
+    // dotted guides at 1 / 45.45 / 51.5 / 67.5, BASE_OFFSET 16
+    var lines = [1, 45.45, 51.5, 67.5].map(function(v){
+      return '<div class="pline" style="bottom:'+(v*scale+16)+'px"></div>';
+    }).join("");
+    Array.prototype.slice.call(chart.querySelectorAll(".pline")).forEach(function(n){ n.remove(); });
+    chart.insertAdjacentHTML("afterbegin", lines);
+    var shellW = document.getElementById("shell").clientWidth;
+    var bw = Math.max(40, (shellW - 64 - 32*5) / 3);
+    var cols = chart.querySelectorAll(".pcol");
+    var delays = [0, 150, 350];
+    cols.forEach(function(col, i){
+      col.style.setProperty("--pbw", bw+"px");
+      col.style.width = bw+"px";
+      var bar = col.querySelector("i");
+      bar.style.transition = "none";
+      bar.style.height = "0px";
+      bar.style.background = col.dataset.c;
+      var target = parseFloat(col.dataset.v) * scale;
+      setTimeout(function(){
+        bar.style.transition = "";
+        bar.style.height = target + "px";
+      }, 60 + delays[i]);
+    });
+  }
+
+  /* ---- Hook ---- */
+  document.getElementById("hookCta").addEventListener("click", function(){
+    track("web_funnel_cta", {screen:"hook"});
+    next();
+  });
+
+  /* ---- Sports multi-select (order preserved: first pick = main sport) ---- */
+  var sportsCta = document.getElementById("sportsCta");
+  document.getElementById("lgGrid").addEventListener("click", function(e){
+    var card = e.target.closest(".lg-card"); if(!card) return;
+    var lg = card.dataset.lg;
+    var at = answers.leagues.indexOf(lg);
+    if(at===-1){ answers.leagues.push(lg); card.classList.add("sel"); }
+    else { answers.leagues.splice(at,1); card.classList.remove("sel"); }
+    var any = answers.leagues.length>0;
+    sportsCta.disabled = !any;
+    document.getElementById("sportsCtaLabel").textContent = any ? "Build my board" : "Pick at least one";
+    track("web_funnel_answer", {question:"leagues", value:answers.leagues});
+  });
+  sportsCta.addEventListener("click", next);
+
+  /* ---- Alerts ---- */
+  document.getElementById("alertsCta").addEventListener("click", function(){
+    answers.alerts = "on";
+    track("web_funnel_answer", {question:"alerts", value:"on"});
+    next();
+  });
+  document.getElementById("alertsSkip").addEventListener("click", function(){
+    answers.alerts = "later";
+    track("web_funnel_answer", {question:"alerts", value:"later"});
+    next();
+  });
+
+  document.getElementById("demoNext").addEventListener("click", next);
+  document.getElementById("proofCta").addEventListener("click", next);
+  document.getElementById("resultCta").addEventListener("click", next);
+
+  /* ---- Store handoff ---- */
+  function storeClick(platform){
+    return function(){ track("web_funnel_store_click", {platform: platform, answers: answers}); };
+  }
+  document.getElementById("iosCta").addEventListener("click", storeClick("ios"));
+  document.getElementById("playCta").addEventListener("click", storeClick("android"));
+
+  /* ---- Splash (AnimatedSplash: hold, then scale 1->2 + fade) ---- */
+  var splash = document.getElementById("splash");
+  function killSplash(){
+    if(!splash) return;
+    splash.classList.add("out");
+    setTimeout(function(){ splash && splash.remove(); splash = null; }, 480);
+  }
+  splash.addEventListener("click", killSplash);
+  setTimeout(killSplash, 650);
+
+  /* ---- Kickoff ---- */
+  buildMarquee();
+  history.replaceState({i:0},"");
+  show(0,false);
+  track("web_funnel_view", {path: location.pathname});
+  window.addEventListener("resize", function(){ fitAll(steps[idx]); });
+})();
+</script>
+</body>
+</html>
